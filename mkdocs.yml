@@ -122,9 +122,17 @@ watch:
 
 extra:
   social:
+    # The GitHub icon must point at THIS project. A footer GitHub icon reads as
+    # "the repository for what I am reading", so pointing it upstream told
+    # readers cooklang-rs publishes these bindings.
+    - icon: fontawesome/brands/github
+      link: https://github.com/destos/cooklang-bindings
+      name: cooklang-bindings on GitHub
     - icon: fontawesome/brands/python
       link: https://pypi.org/project/cooklang-bindings/
       name: cooklang-bindings on PyPI
-    - icon: fontawesome/brands/github
+    # Upstream gets a deliberately different icon so it cannot be mistaken for
+    # this project's own repository.
+    - icon: fontawesome/solid/code-branch
       link: https://github.com/cooklang/cooklang-rs
-      name: cooklang-rs (the upstream parser, not this project)
+      name: cooklang-rs, the upstream parser this binds to
