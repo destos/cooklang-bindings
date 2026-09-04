@@ -15,9 +15,21 @@ env:
 
 jobs:
   linux:
-    name: linux x86_64 (manylinux)
-    runs-on: ubuntu-latest
-    container: quay.io/pypa/manylinux_2_28_x86_64
+    # Native runners for both arches -- GitHub provides free arm64 runners to
+    # public repositories, so this needs no QEMU and costs roughly the same
+    # wall-clock as the x86_64 job. Emulated arm64 builds of this crate take
+    # minutes rather than seconds, so avoid falling back to QEMU if possible.
+    name: linux ${{ matrix.arch }} (manylinux)
+    runs-on: ${{ matrix.runner }}
+    container: quay.io/pypa/manylinux_2_28_${{ matrix.arch }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x86_64
+            runner: ubuntu-latest
+          - arch: aarch64
+            runner: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@v4
         with:
@@ -36,7 +48,7 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             vendor/cooklang-rs/target
-          key: cargo-manylinux-${{ hashFiles('vendor/cooklang-rs/Cargo.lock', '.gitmodules') }}
+          key: cargo-manylinux-${{ matrix.arch }}-${{ hashFiles('vendor/cooklang-rs/Cargo.lock', '.gitmodules') }}
 
       - name: Generate bindings
         run: /opt/python/cp314-cp314/bin/python scripts/generate.py
@@ -54,7 +66,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: wheel-linux-x86_64
+          name: wheel-linux-${{ matrix.arch }}
           path: wheelhouse/*.whl
 
   macos:

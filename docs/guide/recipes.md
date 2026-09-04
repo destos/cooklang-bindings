@@ -189,6 +189,37 @@ the same thing combine instead of sitting side by side. See
 [Aisle configuration](aisle.md#totalling-under-common-names) for a worked
 example.
 
+## Blank lines delimit steps
+
+Consecutive lines with no blank line between them are **one** step — that is a
+paragraph, per the spec, not a list. A block of bare ingredient declarations
+therefore parses as a single step whose text is the names in sequence:
+
+```pycon
+>>> import cooklang
+>>> recipe = cooklang.parse("@lemongrass{2%stalks}\n@fennel{1}\n")
+>>> [step.text for step in recipe.steps]
+['lemongrass fennel']
+>>> [i.name for i in recipe.ingredients]
+['lemongrass', 'fennel']
+
+```
+
+The ingredients are extracted correctly either way, so this only affects how the
+method reads. Insert blank lines to get one step per line:
+
+```pycon
+>>> import cooklang
+>>> recipe = cooklang.parse("@lemongrass{2%stalks}\n\n@fennel{1}\n")
+>>> [step.text for step in recipe.steps]
+['lemongrass', 'fennel']
+
+```
+
+Worth knowing when importing recipes you did not author: tools that convert from
+other formats often emit a bare declaration block like this, because they have
+no prose to weave the ingredients into.
+
 ## Extended syntax
 
 Everything above is canonical Cooklang. `cooklang-rs` also defines a superset of
