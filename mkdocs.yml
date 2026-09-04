@@ -1,10 +1,9 @@
 site_name: cooklang-bindings
 site_description: Python bindings for cooklang-rs, the official Cooklang recipe parser
 site_url: https://cooklang-bindings.readthedocs.io/
-# No repo_url is set: this project has no public remote yet, and pointing it at
-# cooklang/cooklang-rs would tell readers that upstream publishes these
-# bindings. Set repo_url/repo_name here once this repo has a home.
-edit_uri: ""
+repo_url: https://github.com/destos/cooklang-bindings
+repo_name: destos/cooklang-bindings
+edit_uri: edit/main/docs/
 
 docs_dir: docs
 site_dir: build/site

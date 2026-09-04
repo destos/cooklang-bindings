@@ -17,3 +17,6 @@ target/
 # Local Docker build scratch (scripts/build-manylinux.sh)
 /.cargo-container/
 /.rustup-container/
+
+# Local Claude Code settings, never published.
+.claude/

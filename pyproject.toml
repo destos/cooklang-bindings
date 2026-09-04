@@ -25,6 +25,10 @@ classifiers = [
 ]
 
 [project.urls]
+Homepage = "https://github.com/destos/cooklang-bindings"
+Repository = "https://github.com/destos/cooklang-bindings"
+Documentation = "https://cooklang-bindings.readthedocs.io/"
+Issues = "https://github.com/destos/cooklang-bindings/issues"
 Upstream = "https://github.com/cooklang/cooklang-rs"
 
 [project.optional-dependencies]

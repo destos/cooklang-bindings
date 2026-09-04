@@ -6,7 +6,7 @@ Requires a **Rust toolchain**, Python 3.10+, and git.
 
 ```sh
 # Clone this repository (not cooklang-rs, which is vendored as a submodule).
-git clone --recurse-submodules <this repo>
+git clone --recurse-submodules https://github.com/destos/cooklang-bindings.git
 cd cooklang-bindings
 
 make generate      # build the cdylib, generate the Python bindings
