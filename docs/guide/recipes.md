@@ -220,6 +220,31 @@ Worth knowing when importing recipes you did not author: tools that convert from
 other formats often emit a bare declaration block like this, because they have
 no prose to weave the ingredients into.
 
+If you are rendering a corpus that already contains such recipes, you may want
+to detect these steps rather than show them. A declaration-only step is exactly
+one whose text is its own ingredient names in sequence:
+
+```pycon
+>>> import cooklang
+>>> def is_declaration_only(step):
+...     return bool(step.ingredients) and step.text == " ".join(
+...         i.name for i in step.ingredients
+...     )
+...
+>>> declarations = cooklang.parse("@olive oil{2%tbsp}\n@leeks{2}\n@potatoes{3}\n")
+>>> [is_declaration_only(s) for s in declarations.steps]
+[True]
+>>> prose = cooklang.parse("Fry the @leeks{2} in @olive oil{2%tbsp}.")
+>>> [is_declaration_only(s) for s in prose.steps]
+[False]
+
+```
+
+This is deliberately left to the caller rather than built in: whether such a
+step is noise or content depends on how you render, and the honest fix is to
+edit the recipe. The ingredients are on `recipe.ingredients` regardless, so
+filtering the step loses nothing.
+
 ## Extended syntax
 
 Everything above is canonical Cooklang. `cooklang-rs` also defines a superset of
