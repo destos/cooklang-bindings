@@ -1,0 +1,81 @@
+name: Release
+
+# Publishes to PyPI via Trusted Publishing (OIDC). No API token is stored in
+# this repository: PyPI verifies the workflow identity directly, so there is no
+# secret to leak or rotate.
+#
+# The wheels come from the Wheels workflow, called below, so what is published
+# is exactly what CI builds and tests -- not a second build that could drift.
+#
+# Publishing to PyPI is irreversible: a version number can never be reused,
+# even after deletion. Use the TestPyPI path first.
+
+on:
+  # Tagging v0.2.0 publishes 0.2.0 to PyPI.
+  push:
+    tags: ["v*"]
+  # Manual runs go to TestPyPI, for rehearsing the whole path safely.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    uses: ./.github/workflows/wheels.yml
+
+  testpypi:
+    name: publish to TestPyPI
+    if: github.event_name == 'workflow_dispatch'
+    needs: build
+    runs-on: ubuntu-latest
+    environment: testpypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: dist
+          pattern: wheel-*
+          merge-multiple: true
+      - run: ls -la dist
+      - uses: pypa/gh-action-pypi-publish@v1.14.2
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          # TestPyPI accumulates rehearsals; do not fail a dry run on a
+          # version that was already uploaded there.
+          skip-existing: true
+
+  pypi:
+    name: publish to PyPI
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: dist
+          pattern: wheel-*
+          merge-multiple: true
+
+      - name: Show what is about to be published
+        run: ls -la dist
+
+      # The tag is the single source of truth for the version. A mismatch here
+      # would publish a version nobody asked for, and it cannot be undone.
+      - name: Tag matches the packaged version
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          for whl in dist/*.whl; do
+            version=$(basename "$whl" | cut -d- -f2)
+            echo "$whl -> $version (tag $tag)"
+            test "$version" = "$tag" || {
+              echo "::error::wheel version $version does not match tag $tag"
+              exit 1
+            }
+          done
+
+      - uses: pypa/gh-action-pypi-publish@v1.14.2
