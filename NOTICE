@@ -12,11 +12,14 @@ All parsing is performed by the upstream Rust crate:
     Licensed under the MIT License
 
 Specifically, this project builds the upstream `cooklang-bindings` crate
-(bindings/ in that repository, version 0.18.7) -- this Python distribution
-deliberately shares that crate's name, because it packages exactly it -- and generates Python bindings
-from its existing UniFFI interface, the same interface upstream already uses to
-ship its Swift and Kotlin bindings. The upstream source is included as a git
-submodule pinned to tag v0.18.7 and is used unmodified.
+(bindings/ in that repository, version 0.18.7) and generates Python bindings
+from its existing UniFFI interface, the same interface upstream already uses
+to ship its Swift and Kotlin bindings. The upstream source is included as a
+git submodule pinned to tag v0.18.7 and is used unmodified.
+
+This Python distribution is deliberately named `cooklang-bindings` after that
+crate, because it packages exactly it. It is published by this project, not by
+the cooklang-rs authors.
 
 Distributed wheels contain a compiled copy of that MIT-licensed upstream code,
 in the form of the `libcooklang_bindings` shared library, together with the
