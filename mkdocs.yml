@@ -1,8 +1,9 @@
 site_name: cooklang-bindings
 site_description: Python bindings for cooklang-rs, the official Cooklang recipe parser
 site_url: https://cooklang-bindings.readthedocs.io/
-repo_url: https://github.com/cooklang/cooklang-rs
-repo_name: cooklang/cooklang-rs
+# No repo_url is set: this project has no public remote yet, and pointing it at
+# cooklang/cooklang-rs would tell readers that upstream publishes these
+# bindings. Set repo_url/repo_name here once this repo has a home.
 edit_uri: ""
 
 docs_dir: docs
@@ -54,6 +55,7 @@ nav:
       - guide/aisle.md
       - guide/shopping.md
       - guide/values.md
+  - Syntax extensions: extensions.md
   - Relationship to cooklang-rs: upstream.md
   - API reference:
       - api/index.md
@@ -79,7 +81,11 @@ markdown_extensions:
       pygments_lang_class: true
   - pymdownx.inlinehilite
   - pymdownx.snippets
-  - pymdownx.superfences
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
   - pymdownx.tabbed:
       alternate_style: true
 
@@ -122,4 +128,4 @@ extra:
       name: cooklang-bindings on PyPI
     - icon: fontawesome/brands/github
       link: https://github.com/cooklang/cooklang-rs
-      name: cooklang-rs upstream
+      name: cooklang-rs (the upstream parser, not this project)

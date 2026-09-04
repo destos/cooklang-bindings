@@ -237,6 +237,27 @@ covers the Python layer.
 make test
 ```
 
+## Syntax extensions
+
+`cooklang-rs` parses a [superset][ext] of canonical Cooklang — aliases,
+modifiers, range values and more. **These bindings parse canonical Cooklang
+only, and there is no way to enable the extensions**, because upstream's UniFFI
+binding hardcodes `CooklangParser::canonical()` and `parse_recipe` takes no
+parser-mode argument. Swift and Kotlin share the constraint; it is not
+Python-specific.
+
+That matters more than a missing feature normally would, because Cooklang is
+forgiving: unrecognised syntax is read as text rather than rejected, so extended
+markup lands *inside* your data instead of raising.
+`@onion|onions{1}` parses to an ingredient literally named `onion|onions`, and
+`@&onion{1}` to one named `&onion`. `@flour{10 kg}` (no `%`) becomes the text
+amount `"10 kg"` rather than 10 + `kg`. Canonical mode also uses an empty unit
+converter, so `1%kg` and `500%g` are not converted before totalling.
+
+Supporting the superset needs an upstream change — an exported parse function
+taking extension flags. See `docs/extensions.md` for the detail, and "Known
+upstream gaps" below.
+
 ## Known upstream gaps
 
 **Records used as map keys are unhashable in Python.** UniFFI's Python backend
@@ -258,6 +279,12 @@ It is three lines, it touches no parser logic, and it is covered by
 `TestCombineIngredients` so a future UniFFI release that fixes this upstream
 will not break us silently.
 
+**No way to enable syntax extensions.** `parse_recipe` hardcodes
+`CooklangParser::canonical()`, so the whole extension set is unreachable and
+extended syntax is silently absorbed into ingredient names. This is the one gap
+worth raising upstream: it needs an exported parse function that accepts
+extension flags. See the "Syntax extensions" section above.
+
 **Ranges are an extension, not canonical.** Upstream's
 `CooklangParser::canonical()` has range extensions off, so `@onion{1-2}` parses
 as the text amount `"1-2"`, not a numeric range. The `Range` type is kept in the
@@ -270,6 +297,7 @@ types.
 MIT, matching upstream. Distributed wheels contain a compiled copy of the
 MIT-licensed cooklang-rs. See [LICENSE](LICENSE) and [NOTICE](NOTICE).
 
+[ext]: https://github.com/cooklang/cooklang-rs/blob/main/extensions.md
 [upstream]: https://github.com/cooklang/cooklang-rs
 [cooklang]: https://cooklang.org
 [uniffi]: https://mozilla.github.io/uniffi-rs/
