@@ -31,13 +31,19 @@ permissions:
   contents: read
 
 jobs:
+  # Publishing is gated on the full suite, not just on the wheels building.
+  # 0.2.1 was published while Tests was red -- the release only called the
+  # Wheels workflow, so a failing test suite could not stop it.
+  test:
+    uses: ./.github/workflows/tests.yml
+
   build:
     uses: ./.github/workflows/wheels.yml
 
   dry-run:
     name: dry run (uploads nothing)
     if: github.event_name == 'workflow_dispatch' && inputs.target == 'dry-run'
-    needs: build
+    needs: [test, build]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v8
@@ -65,7 +71,7 @@ jobs:
   testpypi:
     name: publish to TestPyPI
     if: github.event_name == 'workflow_dispatch' && inputs.target == 'testpypi'
-    needs: build
+    needs: [test, build]
     runs-on: ubuntu-latest
     environment: testpypi
     permissions:
@@ -87,7 +93,7 @@ jobs:
   pypi:
     name: publish to PyPI
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: build
+    needs: [test, build]
     runs-on: ubuntu-latest
     environment: pypi
     permissions:

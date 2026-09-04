@@ -8,8 +8,8 @@ The import name is `cooklang`, not the distribution name:
 
 ```pycon
 >>> import cooklang
->>> cooklang.__version__
-'0.2.0'
+>>> isinstance(cooklang.__version__, str)
+True
 
 ```
 

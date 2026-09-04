@@ -211,3 +211,24 @@ class TestTimers:
         recipe = cooklang.parse("Wait for the ~oven{}.")
 
         assert recipe.steps[0].text == "Wait for the oven."
+
+
+def test_declared_version_matches_pyproject():
+    """`__version__` and pyproject.toml must not drift apart.
+
+    They are declared in two places, so a release can bump one and not the
+    other. The release workflow checks the git tag against the *packaged*
+    version, which comes from pyproject.toml -- so a stale `__version__` would
+    publish without complaint and only surface as a wrong number at runtime.
+    """
+    import pathlib
+    import re
+
+    pyproject = pathlib.Path(__file__).resolve().parent.parent / "pyproject.toml"
+    if not pyproject.exists():  # pragma: no cover - installed without a source tree
+        pytest.skip("no source tree next to the tests")
+
+    declared = re.search(r'^version = "([^"]+)"', pyproject.read_text(), re.M)
+
+    assert declared is not None, "no version in pyproject.toml"
+    assert declared.group(1) == cooklang.__version__

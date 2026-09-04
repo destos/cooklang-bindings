@@ -50,8 +50,8 @@ from — see [Relationship to cooklang-rs](../upstream.md).
 
 ```pycon
 >>> import cooklang
->>> cooklang.__version__
-'0.2.0'
+>>> isinstance(cooklang.__version__, str)
+True
 >>> cooklang.UPSTREAM_VERSION
 '0.18.7'
 
