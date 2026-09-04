@@ -9,10 +9,10 @@ wheelhouse/
 target/
 
 # Generated at build time by scripts/generate.py — never committed.
-/src/cooklang_rs/_generated/cooklang_bindings.py
-/src/cooklang_rs/_generated/*.so
-/src/cooklang_rs/_generated/*.dylib
-/src/cooklang_rs/_generated/*.dll
+/src/cooklang/_generated/cooklang_bindings.py
+/src/cooklang/_generated/*.so
+/src/cooklang/_generated/*.dylib
+/src/cooklang/_generated/*.dll
 
 # Local Docker build scratch (scripts/build-manylinux.sh)
 /.cargo-container/

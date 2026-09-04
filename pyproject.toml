@@ -3,8 +3,8 @@ requires = ["setuptools>=77", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "cooklang-rs"
-version = "0.1.0"
+name = "cooklang-bindings"
+version = "0.2.0"
 description = "Python bindings for cooklang-rs, the official Cooklang parser"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -38,8 +38,8 @@ zip-safe = false
 where = ["src"]
 
 [tool.setuptools.package-data]
-cooklang_rs = ["py.typed"]
-"cooklang_rs._generated" = ["*.py", "*.so", "*.dylib", "*.dll"]
+cooklang = ["py.typed"]
+"cooklang._generated" = ["*.py", "*.so", "*.dylib", "*.dll"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

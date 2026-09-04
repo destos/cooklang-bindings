@@ -2,7 +2,7 @@
 """Build the upstream cooklang-bindings cdylib and generate its Python bindings.
 
 This is a *code generation* step, not a build of hand-written glue: everything
-under src/cooklang_rs/_generated/ comes straight out of `uniffi-bindgen` run
+under src/cooklang/_generated/ comes straight out of `uniffi-bindgen` run
 against the pinned upstream crate in vendor/cooklang-rs. Nothing here patches,
 vendors or reimplements parser logic.
 
@@ -21,7 +21,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 UPSTREAM = ROOT / "vendor" / "cooklang-rs"
 BINDINGS = UPSTREAM / "bindings"
-OUT = ROOT / "src" / "cooklang_rs" / "_generated"
+OUT = ROOT / "src" / "cooklang" / "_generated"
 
 # Base name of the upstream cdylib, per bindings/Cargo.toml `name`.
 LIB_STEM = "cooklang_bindings"

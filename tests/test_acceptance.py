@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import pytest
 
-import cooklang_rs
+import cooklang
 
 RECIPE = """---
 title: Test
@@ -27,7 +27,7 @@ Fry it in a #pan{} for ~{5%minutes}.
 
 @pytest.fixture(scope="module")
 def recipe():
-    return cooklang_rs.parse(RECIPE)
+    return cooklang.parse(RECIPE)
 
 
 def test_title(recipe):

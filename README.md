@@ -1,18 +1,18 @@
-# cooklang-rs (Python bindings)
+# cooklang-bindings (Python bindings for Cooklang)
 
 Python bindings for [cooklang-rs][upstream], the official Rust implementation of
 the [Cooklang][cooklang] recipe markup language.
 
 **This is a binding to cooklang-rs, not a fork of it.** It contains no parser
-logic. Everything under `src/cooklang_rs/_generated/` is produced by
+logic. Everything under `src/cooklang/_generated/` is produced by
 [UniFFI][uniffi] from the interface upstream already maintains — the same
 interface behind their Swift and Kotlin bindings — and the rest is a thin
 Pythonic layer over that output.
 
 ```python
-import cooklang_rs
+import cooklang
 
-recipe = cooklang_rs.parse(source)
+recipe = cooklang.parse(source)
 
 recipe.title                      # "Sourdough"
 recipe.servings                   # 4
@@ -27,8 +27,11 @@ recipe.ingredients[0].quantity    # Quantity(value=500, unit="g", text="500 g")
 ## Install
 
 ```sh
-pip install cooklang-rs
+pip install cooklang-bindings
 ```
+
+The distribution is `cooklang-bindings`, mirroring the name of the upstream
+crate it packages; the import is `cooklang`.
 
 Wheels ship a prebuilt native library, so **installing needs no Rust toolchain.**
 UniFFI's Python output drives the library through `ctypes` rather than the
@@ -52,7 +55,7 @@ v0.18.7), included as a git submodule at `vendor/cooklang-rs` and used
 unmodified. The pin is deliberate: reproducible builds matter more here than
 tracking tip.
 
-`cooklang_rs.UPSTREAM_VERSION` reports it at runtime, and CI fails if that
+`cooklang.UPSTREAM_VERSION` reports it at runtime, and CI fails if that
 constant and the submodule tag ever disagree.
 
 To move to a new upstream release, bump the submodule to the new tag, update
@@ -108,28 +111,98 @@ Timers render inline as their duration rather than their name, because that is
 what reads correctly in prose: `Boil for ~eggs{3%minutes}` becomes
 `Boil for 3 minutes`. A timer written without a duration falls back to its name.
 
-`combine_ingredients(ingredients)` totals repeats, letting upstream do the unit
-arithmetic: two `@salt{2%tsp}` and `@salt{3%tsp}` mentions become one `5 tsp`.
-Amounts in units that cannot be added stay separate under the same name.
+`combine_ingredients(ingredients, *, indices=None, aisle=None)` totals repeats,
+letting upstream do the unit arithmetic: two `@salt{2%tsp}` and `@salt{3%tsp}`
+mentions become one `5 tsp`. Amounts in units that cannot be added stay separate
+under the same name. `indices` totals only a subset; `aisle` resolves names
+through an aisle config first (see below).
 
 All model types are frozen dataclasses holding no FFI objects, so they compare,
 hash and pickle normally.
 
-### What is not wrapped
+### Aisle configuration and common names
 
-Upstream also exposes aisle-config and shopping-list functions
-(`parse_aisle_config`, `use_common_names`, `parse_shopping_list`, and friends).
-They work on Python — they are verified to — but they are outside what this
-package set out to cover, so they have no Pythonic layer. Reach them through
-the generated module if you need them:
+An aisle config groups ingredient names and their aliases into shopping
+categories and gives each group one canonical name. That is what makes totals
+across recipes trustworthy: without it, `@onions{1}` in one recipe and
+`@brown onion{2}` in another are two different ingredients.
 
 ```python
-from cooklang_rs._ffi import ffi
-config = ffi.parse_aisle_config(text)
+config = cooklang.parse_aisle_config("""
+[produce]
+onion|onions|brown onion
+fennel
+
+[dairy]
+butter|unsalted butter
+""")
+
+config.common_name_for("Brown Onion")   # "onion"  (case-insensitive, matches aliases)
+config.category_for("butter")           # "dairy"
+config.categories                       # in config-file order
+
+recipe = cooklang.parse("Add @onions{1} and @brown onion{2}.")
+cooklang.combine_ingredients(recipe.ingredients, aisle=config)
+# {"onion": (Quantity(value=3, unit=None, text="3"),)}
 ```
 
-That is the raw UniFFI surface: mechanical, and not covered by this package's
-API stability.
+`common_name_for` never returns `None` — an ingredient the config does not list
+comes back unchanged, so it is safe to apply across a whole list.
+`group_by_category(names)` buckets names for rendering, keeping config order and
+collecting anything unlisted under `None` rather than dropping it.
+`apply_common_names(totals)` does the same normalisation on totals you already
+computed, merging quantities that collapse onto one name.
+
+### Shopping lists and the checked log
+
+Two more formats upstream parses. A `.shopping-list` holds recipe references
+(`./Breakfast/Pancakes{2}`, the `./` marking a reference and the braces scaling
+it) and free-hand ingredients (`salt{1%tsp}`), nested by two-space indents:
+
+```python
+shopping = cooklang.parse_shopping_list("./Breakfast/Pancakes{2}\nsalt{1%tsp}\n")
+shopping.recipes[0].path        # "Breakfast/Pancakes"  (the ./ is stripped)
+shopping.recipes[0].multiplier  # 2.0
+shopping.ingredients[0].name    # "salt"
+shopping.to_text()              # round-trips back to the file format
+```
+
+A `.shopping-checked` file is an append-only log of `+ name` / `- name` entries.
+Replaying it gives the currently-checked set, with later entries winning:
+
+```python
+entries = cooklang.parse_checked_log("+ salt\n+ pepper\n- salt\n")
+cooklang.checked_names(entries)                      # ("pepper",)
+cooklang.compact_checked_log(entries, ["pepper"])    # drops stale entries
+```
+
+`compact_checked_log` wants the *aggregated* ingredient names the user actually
+sees. A `.shopping-list` on disk holds only recipe references, so expand those
+first — passing the raw list's own names would discard every entry as stale.
+
+### Value helpers
+
+`parse_value` reads a quantity the way upstream does, and `format_value` renders
+one back. Useful when a user types an amount and you want Cooklang's reading of
+it rather than `float()`'s:
+
+```python
+cooklang.parse_value("1 1/2")     # 1.5
+cooklang.parse_value("1/2 - 3/4") # Range(start=0.5, end=0.75)
+cooklang.parse_value("a pinch")   # "a pinch"  (text, not an error)
+cooklang.format_value(0.5)        # "1/2"
+```
+
+### Upstream coverage
+
+Every function upstream exports is reachable. `tests/test_ffi_surface.py` holds
+a `_COVERAGE` map naming how each of the 28 is reached, and a test that fails if
+upstream adds or removes one.
+
+The four `deref_*` functions are the only ones with no Python wrapper: the model
+resolves every reference eagerly at parse time, so a caller never holds an
+unresolved reference to dereference. They are still exercised by the test suite,
+and reachable on `cooklang._ffi.ffi` if you want them.
 
 ### Errors
 
@@ -176,7 +249,7 @@ TypeError: cannot use 'GroupedQuantityKey' as a dict key
 
 This is a UniFFI Python-target gap, not an upstream bug: the Rust type derives
 `Hash + Eq`, and Swift and Kotlin get structural hashing for free, which is why
-only Python trips over it. `cooklang_rs/_ffi.py` restores a consistent
+only Python trips over it. `cooklang/_ffi.py` restores a consistent
 `__hash__` on the generated class at import, matching upstream's own derive.
 It is three lines, it touches no parser logic, and it is covered by
 `TestCombineIngredients` so a future UniFFI release that fixes this upstream

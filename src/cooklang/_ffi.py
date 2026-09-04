@@ -10,7 +10,7 @@ try:
     from ._generated import cooklang_bindings as ffi
 except ImportError as exc:  # pragma: no cover - depends on install method
     raise ImportError(
-        "cooklang_rs could not load its compiled bindings. If you are working "
+        "cooklang could not load its compiled bindings. If you are working "
         "from a source checkout, build them first:\n"
         "    git submodule update --init --recursive\n"
         "    python scripts/generate.py\n"

@@ -30,8 +30,8 @@ wheel-linux:
 
 clean:
 	rm -rf build dist wheelhouse .pytest_cache
-	rm -f src/cooklang_rs/_generated/cooklang_bindings.py
-	rm -f src/cooklang_rs/_generated/*.so src/cooklang_rs/_generated/*.dylib
+	rm -f src/cooklang/_generated/cooklang_bindings.py
+	rm -f src/cooklang/_generated/*.so src/cooklang/_generated/*.dylib
 	find . -name __pycache__ -type d -prune -exec rm -rf {} +
 
 distclean: clean

@@ -11,6 +11,8 @@ from typing import Any, Iterator, Mapping, Sequence
 
 __all__ = [
     "Range",
+    "NameAndUrl",
+    "RecipeTime",
     "Quantity",
     "Ingredient",
     "Cookware",
@@ -56,6 +58,38 @@ class Quantity:
 
     def __str__(self) -> str:
         return self.text
+
+
+@dataclass(frozen=True, slots=True)
+class NameAndUrl:
+    """A metadata credit, used for ``author`` and ``source``.
+
+    Cooklang lets either part stand alone, so both are optional: a recipe may
+    credit a name, a bare URL, or a name linked to one.
+    """
+
+    name: str | None = None
+    url: str | None = None
+
+    def __str__(self) -> str:
+        return self.name or self.url or ""
+
+
+@dataclass(frozen=True, slots=True)
+class RecipeTime:
+    """Recipe timing, in minutes.
+
+    Cooklang accepts either a single total (``time: 45``) or a prep/cook split
+    (``prep time:`` and ``cook time:``). Both shapes land here: ``total`` is
+    the number the recipe gave, or the sum of the split when it gave one.
+    """
+
+    total: int | None = None
+    prep: int | None = None
+    cook: int | None = None
+
+    def __str__(self) -> str:
+        return f"{self.total} minutes" if self.total is not None else ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -158,7 +192,7 @@ class Section:
 class Recipe:
     """A parsed recipe.
 
-    Build one with :func:`cooklang_rs.parse`.
+    Build one with :func:`cooklang.parse`.
     """
 
     metadata: Mapping[str, Any] = field(default_factory=dict)
@@ -173,6 +207,12 @@ class Recipe:
     """Every ingredient occurrence, in document order, including repeats."""
     cookware: tuple[Cookware, ...] = ()
     timers: tuple[Timer, ...] = ()
+    author: NameAndUrl | None = None
+    """Structured form of the ``author`` metadata; the raw string stays in ``metadata``."""
+    source: NameAndUrl | None = None
+    """Structured form of the ``source`` metadata; the raw string stays in ``metadata``."""
+    time: RecipeTime | None = None
+    """Structured form of the recipe's timing, in minutes."""
 
     @property
     def title(self) -> str | None:

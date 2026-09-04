@@ -2,22 +2,27 @@
 
 from __future__ import annotations
 
-from typing import Any, Sequence
+from typing import TYPE_CHECKING, Any, Sequence
 
 from ._ffi import ffi
 from .models import (
     Cookware,
     Ingredient,
+    NameAndUrl,
     Note,
     Quantity,
     Range,
     Recipe,
+    RecipeTime,
     Section,
     Step,
     Timer,
 )
 
 __all__ = ["parse", "combine_ingredients", "CooklangError"]
+
+if TYPE_CHECKING:  # pragma: no cover
+    from .aisle import AisleConfig
 
 
 class CooklangError(ValueError):
@@ -90,6 +95,29 @@ def _timer(raw: Any) -> Timer:
     return Timer(name=raw.name or None, quantity=_quantity(raw.amount))
 
 
+def _name_and_url(raw: Any) -> NameAndUrl | None:
+    if raw is None or (raw.name is None and raw.url is None):
+        return None
+    return NameAndUrl(name=raw.name, url=raw.url)
+
+
+def _recipe_time(raw: Any) -> RecipeTime | None:
+    """Flatten upstream's Total/Composed split into one shape.
+
+    A composed time gets a `total` too, summed from whichever halves are
+    present, so callers can read `.total` without first asking which form the
+    recipe happened to use.
+    """
+    if raw is None:
+        return None
+    if isinstance(raw, ffi.RecipeTime.TOTAL):
+        return RecipeTime(total=int(raw.minutes))
+    prep = None if raw.prep_time is None else int(raw.prep_time)
+    cook = None if raw.cook_time is None else int(raw.cook_time)
+    total = None if prep is None and cook is None else (prep or 0) + (cook or 0)
+    return RecipeTime(total=total, prep=prep, cook=cook)
+
+
 def _metadata(recipe: Any) -> dict[str, Any]:
     metadata: dict[str, Any] = {}
 
@@ -133,7 +161,7 @@ def _step_text(items: Any, ingredients: list[Ingredient], cookware: list[Cookwar
 
 
 def parse(text: str, *, scale: float = 1.0) -> Recipe:
-    """Parse Cooklang source into a :class:`~cooklang_rs.models.Recipe`.
+    """Parse Cooklang source into a :class:`~cooklang.models.Recipe`.
 
     Args:
         text: The recipe source.
@@ -178,6 +206,9 @@ def parse(text: str, *, scale: float = 1.0) -> Recipe:
 
     return Recipe(
         metadata=_metadata(raw),
+        author=_name_and_url(ffi.metadata_author(raw)),
+        source=_name_and_url(ffi.metadata_source(raw)),
+        time=_recipe_time(ffi.metadata_time(raw)),
         sections=tuple(sections),
         ingredients=tuple(ingredients),
         cookware=tuple(cookware),
@@ -197,16 +228,24 @@ def _to_ffi_value(value: int | float | str | Range | None) -> Any:
     return ffi.Value.TEXT(value=str(value))
 
 
-def combine_ingredients(ingredients: Sequence[Ingredient]) -> dict[str, tuple[Quantity, ...]]:
-    """Total up repeated ingredients, letting upstream do the unit arithmetic.
+def _quantities_from_grouped(grouped: Any) -> tuple[Quantity, ...]:
+    """Convert one entry of upstream's `GroupedQuantity` map to Quantities."""
+    quantities = []
+    for key, value in grouped.items():
+        if isinstance(value, ffi.Value.EMPTY):
+            continue
+        quantities.append(
+            Quantity(
+                value=_value(value),
+                unit=key.name or None,
+                text=(ffi.format_value(value) or "").strip(),
+            )
+        )
+    return tuple(quantities)
 
-    Ingredients of the same name are summed per unit, so two ``@salt{2%tsp}``
-    and ``@salt{3%tsp}`` mentions become a single ``5 tsp``. Amounts in units
-    that cannot be added together stay as separate entries under one name.
 
-    Returns a mapping of ingredient name to its totals.
-    """
-    raw_ingredients = [
+def _to_ffi_ingredients(ingredients: Sequence[Ingredient]) -> list[Any]:
+    return [
         ffi.Ingredient(
             name=item.name,
             amount=(
@@ -223,18 +262,51 @@ def combine_ingredients(ingredients: Sequence[Ingredient]) -> dict[str, tuple[Qu
         for item in ingredients
     ]
 
-    combined: dict[str, tuple[Quantity, ...]] = {}
-    for name, grouped in ffi.combine_ingredients(raw_ingredients).items():
-        totals = []
-        for key, value in grouped.items():
-            if isinstance(value, ffi.Value.EMPTY):
-                continue
-            totals.append(
-                Quantity(
-                    value=_value(value),
-                    unit=key.name or None,
-                    text=(ffi.format_value(value) or "").strip(),
+
+def combine_ingredients(
+    ingredients: Sequence[Ingredient],
+    *,
+    indices: Sequence[int] | None = None,
+    aisle: "AisleConfig | None" = None,
+) -> dict[str, tuple[Quantity, ...]]:
+    """Total up repeated ingredients, letting upstream do the unit arithmetic.
+
+    Ingredients of the same name are summed per unit, so two ``@salt{2%tsp}``
+    and ``@salt{3%tsp}`` mentions become a single ``5 tsp``. Amounts in units
+    that cannot be added together stay as separate entries under one name.
+
+    Args:
+        ingredients: The ingredients to total.
+        indices: Positions to include, for totalling a subset — the steps a
+            user ticked, say. ``None`` (the default) uses all of them.
+        aisle: An :class:`~cooklang.aisle.AisleConfig`. When given,
+            ingredient names are resolved to their common names *before*
+            totalling, so ``@onions{1}`` and ``@brown onion{2}`` combine into
+            one ``onion`` entry instead of two.
+
+    Returns:
+        A mapping of ingredient name to its totals.
+
+    Raises:
+        IndexError: If ``indices`` refers to a position that does not exist.
+    """
+    raw_ingredients = _to_ffi_ingredients(ingredients)
+
+    if indices is None:
+        selected = list(range(len(raw_ingredients)))
+    else:
+        selected = [int(i) for i in indices]
+        for index in selected:
+            if not 0 <= index < len(raw_ingredients):
+                raise IndexError(
+                    f"index {index} out of range for {len(raw_ingredients)} ingredients"
                 )
-            )
-        combined[name] = tuple(totals)
-    return combined
+
+    combined = ffi.combine_ingredients_selected(raw_ingredients, selected)
+
+    if aisle is not None:
+        combined = ffi.use_common_names(combined, aisle._conf)
+
+    return {
+        name: _quantities_from_grouped(grouped) for name, grouped in combined.items()
+    }

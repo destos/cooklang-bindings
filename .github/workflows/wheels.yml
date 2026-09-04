@@ -110,7 +110,7 @@ jobs:
 
       - name: Submodule tag matches UPSTREAM_VERSION
         run: |
-          declared=$(grep -oE '^UPSTREAM_VERSION = "[^"]+"' src/cooklang_rs/__init__.py | cut -d'"' -f2)
+          declared=$(grep -oE '^UPSTREAM_VERSION = "[^"]+"' src/cooklang/__init__.py | cut -d'"' -f2)
           actual=$(git -C vendor/cooklang-rs describe --tags --exact-match)
           echo "declared=$declared actual=$actual"
           test "v$declared" = "$actual"

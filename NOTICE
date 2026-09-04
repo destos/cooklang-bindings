@@ -1,5 +1,5 @@
-cooklang-rs (Python bindings)
-============================
+cooklang-bindings (Python bindings for Cooklang)
+================================================
 
 This project is a *binding* to cooklang-rs. It is not a fork of it, and it
 contains no Cooklang parser logic of its own.
@@ -12,7 +12,8 @@ All parsing is performed by the upstream Rust crate:
     Licensed under the MIT License
 
 Specifically, this project builds the upstream `cooklang-bindings` crate
-(bindings/ in that repository, version 0.18.7) and generates Python bindings
+(bindings/ in that repository, version 0.18.7) -- this Python distribution
+deliberately shares that crate's name, because it packages exactly it -- and generates Python bindings
 from its existing UniFFI interface, the same interface upstream already uses to
 ship its Swift and Kotlin bindings. The upstream source is included as a git
 submodule pinned to tag v0.18.7 and is used unmodified.
@@ -21,6 +22,6 @@ Distributed wheels contain a compiled copy of that MIT-licensed upstream code,
 in the form of the `libcooklang_bindings` shared library, together with the
 Python module that UniFFI generates from it.
 
-The code original to this project — the `cooklang_rs` Python API layer, the
+The code original to this project — the `cooklang` Python API layer, the
 build and generation scripts, and the test suite — is Copyright (c) 2026
 Patrick Forringer and is likewise licensed under the MIT License. See LICENSE.

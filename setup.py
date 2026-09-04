@@ -64,7 +64,7 @@ def _check_single_native_library() -> None:
     silently bloated wheel carrying a library it can never load. Cheap to
     check, and it turns a quiet packaging bug into a build failure.
     """
-    generated = pathlib.Path(__file__).parent / "src" / "cooklang_rs" / "_generated"
+    generated = pathlib.Path(__file__).parent / "src" / "cooklang" / "_generated"
     libraries = sorted(
         p.name
         for pattern in ("*.so", "*.dylib", "*.dll")
@@ -72,7 +72,7 @@ def _check_single_native_library() -> None:
     )
     if not libraries:
         raise SystemExit(
-            "No native library in src/cooklang_rs/_generated/.\n"
+            "No native library in src/cooklang/_generated/.\n"
             "Run `python scripts/generate.py` before building a wheel."
         )
     if len(libraries) > 1:

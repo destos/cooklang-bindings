@@ -1,0 +1,117 @@
+site_name: cooklang-bindings
+site_description: Python bindings for cooklang-rs, the official Cooklang recipe parser
+site_url: https://cooklang-bindings.readthedocs.io/
+repo_url: https://github.com/cooklang/cooklang-rs
+repo_name: cooklang/cooklang-rs
+edit_uri: ""
+
+docs_dir: docs
+
+theme:
+  name: material
+  icon:
+    logo: material/chef-hat
+    repo: fontawesome/brands/github
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.sections
+    - navigation.top
+    - navigation.indexes
+    - content.code.copy
+    - content.code.annotate
+    - toc.follow
+    - search.suggest
+    - search.highlight
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: deep orange
+      accent: amber
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: deep orange
+      accent: amber
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+
+nav:
+  - Home: index.md
+  - Installation: installation.md
+  - Getting started: getting-started.md
+  - Guides:
+      - guide/recipes.md
+      - guide/aisle.md
+      - guide/shopping.md
+      - guide/values.md
+  - Relationship to cooklang-rs: upstream.md
+  - API reference:
+      - api/index.md
+      - api/parser.md
+      - api/models.md
+      - api/aisle.md
+      - api/shopping.md
+      - api/values.md
+  - Contributing: contributing.md
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+
+plugins:
+  - search
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          paths: [src]
+          options:
+            docstring_style: google
+            docstring_section_style: table
+            show_source: false
+            show_root_heading: true
+            show_root_full_path: false
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
+            show_if_no_docstring: true
+            members_order: source
+            separate_signature: true
+            show_signature_annotations: true
+            signature_crossrefs: true
+            merge_init_into_class: true
+            filters: ["!^_"]
+            heading_level: 2
+            inherited_members: false
+            annotations_path: brief
+            summary: true
+
+watch:
+  - src/cooklang_rs
+
+extra:
+  social:
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/cooklang-bindings/
+      name: cooklang-bindings on PyPI
+    - icon: fontawesome/brands/github
+      link: https://github.com/cooklang/cooklang-rs
+      name: cooklang-rs upstream
