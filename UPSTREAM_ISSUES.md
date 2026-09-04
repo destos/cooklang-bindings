@@ -1,6 +1,6 @@
 # Upstream issues to file
 
-Two gaps found while building these bindings. Both belong upstream rather than
+Three gaps found while building these bindings. Both belong upstream rather than
 here, because working around either locally would mean patching the vendored
 crate — which would break the guarantee that what this package exposes is
 exactly what upstream supports.
@@ -134,3 +134,67 @@ exactly what upstream supports.
 > Happy to open a PR if the approach sounds right.
 >
 > **Versions:** `cooklang-bindings` 0.18.7, uniffi 0.28.3.
+
+
+---
+
+## 3. cooklang-rs: `strip = true` silently breaks binding generation on Linux
+
+**Where:** `cooklang/cooklang-rs`.
+
+**Status in this project:** worked around in `scripts/generate.py`, which builds
+with `--config profile.release.strip=false`. Verified in CI on Linux and macOS.
+
+> ### `[profile.release] strip = true` makes library-mode bindgen generate nothing on Linux
+>
+> **Summary**
+>
+> The root `Cargo.toml` sets:
+>
+> ```toml
+> [profile.release]
+> codegen-units = 1
+> strip = true
+> ```
+>
+> On ELF targets this strips `.symtab`, which is where `uniffi-bindgen`'s
+> library mode reads the `UNIFFI_META_*` symbols from. It therefore finds zero
+> components and generates **no bindings at all** — while exiting 0.
+>
+> `.dynsym` survives stripping, so the built cdylib loads and works normally.
+> That combination makes the failure very quiet: a working library that bindgen
+> reads as empty, and a generator that reports success.
+>
+> **Reproducer** (clean `ubuntu:24.04`, stable Rust 1.98.1):
+>
+> ```console
+> $ cargo build --release --target x86_64-unknown-linux-gnu
+> $ nm -D target/x86_64-unknown-linux-gnu/release/libcooklang_bindings.so | grep -c UNIFFI_META
+> 62
+> $ nm target/x86_64-unknown-linux-gnu/release/libcooklang_bindings.so | grep -c UNIFFI_META
+> 0
+> $ cargo run --features=uniffi/cli --bin uniffi-bindgen -- print-repr <lib>
+> []
+> $ cargo run --features=uniffi/cli --bin uniffi-bindgen -- generate --library <lib> --language python --out-dir out
+> $ ls out          # empty, exit code was 0
+> ```
+>
+> macOS is unaffected: Mach-O keeps the exported symbols through the same
+> setting, so `build-swift.sh` works and the problem only appears on Linux.
+> This is not Python-specific — Kotlin generation on Linux fails the same way.
+>
+> **Suggested fix**
+>
+> Either drop `strip = true`, or set it only for profiles that do not feed
+> `uniffi-bindgen`, or document that binding generation needs
+> `--config profile.release.strip=false`. A one-line workaround for consumers:
+>
+> ```sh
+> cargo build --release --config profile.release.strip=false
+> ```
+>
+> It may also be worth having `uniffi-bindgen` warn rather than exit 0 when a
+> library yields zero components, since that is indistinguishable from success
+> — but that belongs in `mozilla/uniffi-rs`.
+>
+> **Versions:** `cooklang-bindings` 0.18.7, uniffi 0.28.3, cargo 1.98.1.
