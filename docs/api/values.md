@@ -1,6 +1,6 @@
 # Value helpers
 
-::: cooklang_rs.values
+::: cooklang.values
     options:
       heading_level: 2
       members:

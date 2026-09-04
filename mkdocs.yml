@@ -6,6 +6,12 @@ repo_name: cooklang/cooklang-rs
 edit_uri: ""
 
 docs_dir: docs
+site_dir: build/site
+
+# Support files that live in docs/ but are not pages.
+exclude_docs: |
+  requirements.txt
+  _extensions/
 
 theme:
   name: material
@@ -85,6 +91,8 @@ plugins:
         python:
           paths: [src]
           options:
+            extensions:
+              - docs/_extensions/sphinx_roles.py:SphinxRoles
             docstring_style: google
             docstring_section_style: table
             show_source: false
@@ -105,7 +113,7 @@ plugins:
             summary: true
 
 watch:
-  - src/cooklang_rs
+  - src/cooklang
 
 extra:
   social:

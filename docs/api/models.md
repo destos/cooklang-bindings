@@ -3,7 +3,7 @@
 Every type on this page is a frozen dataclass holding no FFI objects, so
 instances compare, hash and pickle like any other Python value.
 
-::: cooklang_rs.models
+::: cooklang.models
     options:
       heading_level: 2
       members:

@@ -1,6 +1,6 @@
 # Aisle configuration
 
-::: cooklang_rs.aisle
+::: cooklang.aisle
     options:
       heading_level: 2
       members:

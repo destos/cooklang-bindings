@@ -1,6 +1,6 @@
 # Shopping lists
 
-::: cooklang_rs.shopping
+::: cooklang.shopping
     options:
       heading_level: 2
       members:
@@ -12,7 +12,7 @@
 
 ## The checked log
 
-::: cooklang_rs.shopping
+::: cooklang.shopping
     options:
       heading_level: 3
       show_root_heading: false

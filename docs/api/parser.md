@@ -1,6 +1,6 @@
 # Parsing
 
-::: cooklang_rs.parser
+::: cooklang.parser
     options:
       heading_level: 2
       members:

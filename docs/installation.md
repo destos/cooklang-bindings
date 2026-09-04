@@ -4,11 +4,11 @@
 pip install cooklang-bindings
 ```
 
-The import name is `cooklang_rs`, not the distribution name:
+The import name is `cooklang`, not the distribution name:
 
 ```pycon
->>> import cooklang_rs
->>> cooklang_rs.__version__
+>>> import cooklang
+>>> cooklang.__version__
 '0.2.0'
 
 ```
@@ -44,7 +44,7 @@ import fails early with a message that says so rather than failing later in a
 confusing place:
 
 ```
-ImportError: cooklang_rs could not load its compiled bindings. If you are
+ImportError: cooklang could not load its compiled bindings. If you are
 working from a source checkout, build them first:
     git submodule update --init --recursive
     python scripts/generate.py
@@ -54,8 +54,8 @@ Otherwise install a wheel built for your platform.
 A working install parses a recipe:
 
 ```pycon
->>> import cooklang_rs
->>> cooklang_rs.parse("Chop the @onion{1}.").steps[0].text
+>>> import cooklang
+>>> cooklang.parse("Chop the @onion{1}.").steps[0].text
 'Chop the onion.'
 
 ```
@@ -63,7 +63,7 @@ A working install parses a recipe:
 And reports which upstream release it was generated from:
 
 ```pycon
->>> cooklang_rs.UPSTREAM_VERSION
+>>> cooklang.UPSTREAM_VERSION
 '0.18.7'
 
 ```

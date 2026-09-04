@@ -24,6 +24,9 @@ recipe.ingredients[0].name        # "flour"
 recipe.ingredients[0].quantity    # Quantity(value=500, unit="g", text="500 g")
 ```
 
+Full documentation, including guides and a complete API reference, is built
+with `make docs` and configured to deploy to Read the Docs.
+
 ## Install
 
 ```sh

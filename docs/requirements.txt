@@ -1,0 +1,14 @@
+# Documentation toolchain. Mirrors the `docs` extra in pyproject.toml.
+#
+# The package itself is deliberately absent: mkdocstrings reads the source
+# statically with Griffe (see `paths: [src]` in mkdocs.yml), so building the
+# docs never imports `cooklang` and needs neither a Rust toolchain nor the
+# generated native library.
+#
+# mkdocs is pinned below 2.0: MkDocs 2.0 removes the plugin system, which
+# mkdocstrings and Material for MkDocs both depend on.
+mkdocs>=1.6,<2
+mkdocs-material>=9.5,<10
+mkdocstrings[python]>=0.26
+# Lets mkdocstrings format rendered signatures; without it they render unwrapped.
+ruff>=0.6
