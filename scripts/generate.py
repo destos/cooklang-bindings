@@ -75,7 +75,28 @@ def main() -> int:
     # Upstream's own build-swift.sh always passes --target for the same reason.
     target = args.target or host_target()
 
-    run(["cargo", "build", "--release", "--target", target], cwd=BINDINGS)
+    # Upstream's root Cargo.toml sets `[profile.release] strip = true`. On ELF
+    # that strips .symtab, which is where uniffi-bindgen's library mode reads
+    # the UNIFFI_META_* symbols from, so on Linux it finds no components and
+    # generates nothing -- while exiting 0. (.dynsym survives, so the library
+    # itself still loads and works, which is what made this so quiet.) Mach-O
+    # keeps its exported symbols through the same setting, which is why macOS
+    # was unaffected.
+    #
+    # Overridden here rather than by patching the vendored crate, so upstream
+    # stays byte-for-byte unmodified.
+    run(
+        [
+            "cargo",
+            "build",
+            "--release",
+            "--target",
+            target,
+            "--config",
+            "profile.release.strip=false",
+        ],
+        cwd=BINDINGS,
+    )
 
     lib_dir = UPSTREAM / "target" / target / "release"
     lib_path = lib_dir / shared_library_name()
@@ -84,10 +105,24 @@ def main() -> int:
 
     OUT.mkdir(parents=True, exist_ok=True)
 
-    # Drop any library left behind by a build for another platform. Without
-    # this, generating on macOS and then in a Linux container leaves both a
-    # .dylib and a .so in place and the wheel ships the pair.
-    for stale in (*OUT.glob("*.so"), *OUT.glob("*.dylib"), *OUT.glob("*.dll")):
+    # Clear everything a previous run produced, on any platform, before
+    # generating. Two reasons:
+    #
+    #   * a library from another platform would be packaged alongside this
+    #     one, shipping a wheel with a library it can never load;
+    #   * leaving the previous cooklang_bindings.py in place lets a failed
+    #     generation look like a successful one. uniffi-bindgen exits 0 when
+    #     it generates nothing, so a stale file is indistinguishable from a
+    #     fresh one -- which is exactly how a broken Linux build went
+    #     unnoticed while producing working wheels, because the .py left by a
+    #     macOS run got packaged instead.
+    stale_files = [
+        *OUT.glob("*.so"),
+        *OUT.glob("*.dylib"),
+        *OUT.glob("*.dll"),
+        *OUT.glob(f"{LIB_STEM}.py"),
+    ]
+    for stale in stale_files:
         print(f"removing stale {stale.name}")
         stale.unlink()
     run(
