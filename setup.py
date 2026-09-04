@@ -15,7 +15,9 @@ every supported interpreter.
 
 import os
 import pathlib
+import platform
 import re
+import subprocess
 
 from setuptools import setup
 from setuptools.dist import Distribution
@@ -30,6 +32,35 @@ except ImportError:  # setuptools >= 70 vendors it here
 # a minimum of 11.0, which is what `otool -l` reports on the built dylib.
 MACOS_DEPLOYMENT_TARGET = os.environ.get("MACOSX_DEPLOYMENT_TARGET", "11.0")
 
+GENERATED = pathlib.Path(__file__).parent / "src" / "cooklang" / "_generated"
+
+
+def _macos_arch_in_wheel(generated: pathlib.Path, fallback: str) -> str:
+    """The architecture actually present in the dylib we are about to ship.
+
+    The platform tag otherwise comes from the *interpreter's* build. CI uses a
+    universal2 CPython, which made the wheel claim `macosx_11_0_universal2`
+    while containing an arm64-only library -- so pip on an Intel Mac would
+    install it and then fail at import. Tag by what is in the wheel instead.
+    """
+    libraries = sorted(generated.glob("*.dylib"))
+    if not libraries:
+        return fallback
+    try:
+        archs = subprocess.run(
+            ["lipo", "-archs", str(libraries[0])],
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.split()
+    except (OSError, subprocess.CalledProcessError):
+        # No lipo (not macOS, or no command line tools). The host arch is the
+        # best guess, since generate.py builds for the host by default.
+        return platform.machine() or fallback
+    if len(archs) == 1:
+        return archs[0]
+    return "universal2"
+
 
 def _retarget_macos(platform: str) -> str:
     """Tag macOS wheels by what the library actually needs.
@@ -43,7 +74,10 @@ def _retarget_macos(platform: str) -> str:
     if not match:
         return platform
     major, _, minor = MACOS_DEPLOYMENT_TARGET.partition(".")
-    return f"macosx_{major}_{minor or 0}_{match.group('arch')}"
+    arch = match.group("arch")
+    if arch == "universal2":
+        arch = _macos_arch_in_wheel(GENERATED, arch)
+    return f"macosx_{major}_{minor or 0}_{arch}"
 
 
 class BinaryDistribution(Distribution):
@@ -64,7 +98,7 @@ def _check_single_native_library() -> None:
     silently bloated wheel carrying a library it can never load. Cheap to
     check, and it turns a quiet packaging bug into a build failure.
     """
-    generated = pathlib.Path(__file__).parent / "src" / "cooklang" / "_generated"
+    generated = GENERATED
     libraries = sorted(
         p.name
         for pattern in ("*.so", "*.dylib", "*.dll")
