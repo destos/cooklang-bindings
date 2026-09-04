@@ -108,9 +108,25 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Submodule tag matches UPSTREAM_VERSION
+      - name: Submodule commit matches UPSTREAM_VERSION
         run: |
+          # `git describe` is not usable here: actions/checkout fetches
+          # submodules without tags, so there is nothing to describe. Resolve
+          # the tag on the remote instead and compare commit SHAs.
           declared=$(grep -oE '^UPSTREAM_VERSION = "[^"]+"' src/cooklang/__init__.py | cut -d'"' -f2)
-          actual=$(git -C vendor/cooklang-rs describe --tags --exact-match)
-          echo "declared=$declared actual=$actual"
-          test "v$declared" = "$actual"
+          remote=https://github.com/cooklang/cooklang-rs
+          # ^{} dereferences an annotated tag to the commit it points at; fall
+          # back to the ref itself for a lightweight tag.
+          expected=$(git ls-remote "$remote" "refs/tags/v$declared^{}" | cut -f1)
+          if [ -z "$expected" ]; then
+            expected=$(git ls-remote "$remote" "refs/tags/v$declared" | cut -f1)
+          fi
+          actual=$(git -C vendor/cooklang-rs rev-parse HEAD)
+          echo "declared=v$declared"
+          echo "expected=$expected"
+          echo "actual  =$actual"
+          if [ -z "$expected" ]; then
+            echo "::error::no tag v$declared on $remote"
+            exit 1
+          fi
+          test "$expected" = "$actual"
