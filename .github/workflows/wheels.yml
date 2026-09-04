@@ -31,7 +31,7 @@ jobs:
           - arch: aarch64
             runner: ubuntu-24.04-arm
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           submodules: recursive
 
@@ -42,7 +42,7 @@ jobs:
           echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
 
       - name: Cache cargo
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~/.cargo/registry
@@ -64,7 +64,7 @@ jobs:
           /opt/python/cp314-cp314/bin/python -m pip install wheelhouse/*.whl pytest
           cd /tmp && /opt/python/cp314-cp314/bin/python -m pytest "$GITHUB_WORKSPACE/tests" -q
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: wheel-linux-${{ matrix.arch }}
           path: wheelhouse/*.whl
@@ -73,18 +73,18 @@ jobs:
     name: macOS arm64
     runs-on: macos-14
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           submodules: recursive
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.14"
 
       - uses: dtolnay/rust-toolchain@stable
 
       - name: Cache cargo
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~/.cargo/registry
@@ -105,7 +105,7 @@ jobs:
           python -m pip install dist/*.whl pytest
           cd /tmp && python -m pytest "$GITHUB_WORKSPACE/tests" -q
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: wheel-macos-arm64
           path: dist/*.whl
@@ -116,7 +116,7 @@ jobs:
     name: upstream pin matches
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           submodules: recursive
 
