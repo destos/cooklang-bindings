@@ -189,6 +189,12 @@ the same thing combine instead of sitting side by side. See
 [Aisle configuration](aisle.md#totalling-under-common-names) for a worked
 example.
 
+## Extended syntax
+
+Everything above is canonical Cooklang. `cooklang-rs` also defines a superset of
+optional extensions, which these bindings cannot enable — and which are absorbed
+into your data rather than rejected. See [Syntax extensions](../extensions.md).
+
 ## Errors
 
 Malformed metadata and unclosed markup do not raise; they parse to whatever

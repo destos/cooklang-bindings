@@ -255,8 +255,8 @@ amount `"10 kg"` rather than 10 + `kg`. Canonical mode also uses an empty unit
 converter, so `1%kg` and `500%g` are not converted before totalling.
 
 Supporting the superset needs an upstream change — an exported parse function
-taking extension flags. See `docs/extensions.md` for the detail, and "Known
-upstream gaps" below.
+taking extension flags. See `docs/extensions.md` for the detail, and
+[UPSTREAM_ISSUES.md](UPSTREAM_ISSUES.md) for a ready-to-file issue draft.
 
 ## Known upstream gaps
 
@@ -277,13 +277,15 @@ only Python trips over it. `cooklang/_ffi.py` restores a consistent
 `__hash__` on the generated class at import, matching upstream's own derive.
 It is three lines, it touches no parser logic, and it is covered by
 `TestCombineIngredients` so a future UniFFI release that fixes this upstream
-will not break us silently.
+will not break us silently. Draft in
+[UPSTREAM_ISSUES.md](UPSTREAM_ISSUES.md); not yet filed.
 
 **No way to enable syntax extensions.** `parse_recipe` hardcodes
 `CooklangParser::canonical()`, so the whole extension set is unreachable and
 extended syntax is silently absorbed into ingredient names. This is the one gap
 worth raising upstream: it needs an exported parse function that accepts
-extension flags. See the "Syntax extensions" section above.
+extension flags. Draft in [UPSTREAM_ISSUES.md](UPSTREAM_ISSUES.md); not yet
+filed.
 
 **Ranges are an extension, not canonical.** Upstream's
 `CooklangParser::canonical()` has range extensions off, so `@onion{1-2}` parses

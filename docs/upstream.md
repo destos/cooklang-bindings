@@ -26,17 +26,18 @@ invented: it is **the same interface behind upstream's own Swift and Kotlin
 bindings**. This package adds a third target to a list upstream already
 maintains.
 
-```
-vendor/cooklang-rs        upstream, pinned, unmodified
-        |
-        | cargo build  -> libcooklang_bindings.{so,dylib}
-        | uniffi-bindgen
-        v
-cooklang/_generated/      machine-generated, never committed
-        |
-        | thin Python layer
-        v
-cooklang/                 parse(), models, aisle, shopping, values
+```mermaid
+flowchart TD
+    A["<b>vendor/cooklang-rs</b><br/>upstream, pinned, unmodified"]
+    B["<b>libcooklang_bindings</b><br/>.so / .dylib"]
+    C["<b>cooklang/_generated/</b><br/>machine-generated, never committed"]
+    D["<b>cooklang/</b><br/>parse(), models, aisle, shopping, values"]
+
+    A -->|cargo build| B
+    B -->|uniffi-bindgen| C
+    C -->|thin Python layer| D
+
+    style A stroke-dasharray: 5 5
 ```
 
 ## The pinned version
@@ -90,6 +91,11 @@ package turns that into a `Quantity` belongs here.
 
 ## Known upstream gaps
 
+Two, both tracked as drafts in `UPSTREAM_ISSUES.md` in the repository root and
+neither filed upstream yet. The second is covered in full on
+[Syntax extensions](extensions.md).
+
+
 Two behaviours are worth knowing about, because both are pinned by tests so
 that an upstream change surfaces here rather than silently changing your types.
 
@@ -108,6 +114,10 @@ TypeError: cannot use 'GroupedQuantityKey' as a dict key
 This is a **UniFFI Python-target gap, not an upstream bug**: the Rust type
 derives `Hash + Eq`, and Swift and Kotlin get structural hashing for free,
 which is why only Python trips over it.
+
+The second gap is that the bindings cannot enable Cooklang's [syntax
+extensions](extensions.md) at all: `parse_recipe` hardcodes
+`CooklangParser::canonical()` and takes no parser-mode argument.
 
 `cooklang/_ffi.py` restores a consistent `__hash__` on the generated class at
 import, matching upstream's own derive. It is three lines, it touches no parser

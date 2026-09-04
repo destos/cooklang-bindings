@@ -104,6 +104,15 @@ functions — not just the recipe parser.
 | The checked log | [`parse_checked_log`][cooklang.shopping.parse_checked_log] | [Shopping lists](guide/shopping.md#the-checked-log) |
 | Quantity values | [`parse_value`][cooklang.values.parse_value], [`format_value`][cooklang.values.format_value] | [Quantity values](guide/values.md) |
 
+## Canonical Cooklang only
+
+`cooklang-rs` parses a [superset][ext] of canonical Cooklang. These bindings
+parse the canonical spec only, and the extensions cannot be switched on —
+upstream's UniFFI layer hardcodes the canonical parser. Because Cooklang reads
+unrecognised syntax as text rather than rejecting it, extended markup ends up
+inside your data rather than raising. If you ingest recipes you did not write,
+read [Syntax extensions](extensions.md) first.
+
 ## Design notes
 
 - **The model is plain data.** Every type in
@@ -150,6 +159,7 @@ functions — not just the recipe parser.
 MIT, matching upstream. Distributed wheels contain a compiled copy of the
 MIT-licensed cooklang-rs. See [Relationship to cooklang-rs](upstream.md).
 
+[ext]: https://github.com/cooklang/cooklang-rs/blob/main/extensions.md
 [upstream]: https://github.com/cooklang/cooklang-rs
 [cooklang]: https://cooklang.org
 [uniffi]: https://mozilla.github.io/uniffi-rs/
