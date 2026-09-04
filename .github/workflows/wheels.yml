@@ -1,0 +1,116 @@
+name: Wheels
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  # The dylib's real minimum, per `otool -l`. Without this the wheel inherits
+  # the runner Python's SDK version and refuses to install on older macOS.
+  MACOSX_DEPLOYMENT_TARGET: "11.0"
+
+jobs:
+  linux:
+    name: linux x86_64 (manylinux)
+    runs-on: ubuntu-latest
+    container: quay.io/pypa/manylinux_2_28_x86_64
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Rust
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
+            | sh -s -- -y --profile minimal --default-toolchain stable
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            vendor/cooklang-rs/target
+          key: cargo-manylinux-${{ hashFiles('vendor/cooklang-rs/Cargo.lock', '.gitmodules') }}
+
+      - name: Generate bindings
+        run: /opt/python/cp314-cp314/bin/python scripts/generate.py
+
+      - name: Build wheel
+        run: |
+          /opt/python/cp314-cp314/bin/python -m pip install --upgrade build auditwheel
+          /opt/python/cp314-cp314/bin/python -m build --wheel
+          auditwheel repair dist/*.whl -w wheelhouse/
+
+      - name: Test the built wheel
+        run: |
+          /opt/python/cp314-cp314/bin/python -m pip install wheelhouse/*.whl pytest
+          cd /tmp && /opt/python/cp314-cp314/bin/python -m pytest "$GITHUB_WORKSPACE/tests" -q
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheel-linux-x86_64
+          path: wheelhouse/*.whl
+
+  macos:
+    name: macOS arm64
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            vendor/cooklang-rs/target
+          key: cargo-macos-${{ hashFiles('vendor/cooklang-rs/Cargo.lock', '.gitmodules') }}
+
+      - name: Generate bindings
+        run: python scripts/generate.py
+
+      - name: Build wheel
+        run: |
+          python -m pip install --upgrade build
+          python -m build --wheel
+
+      - name: Test the built wheel
+        run: |
+          python -m pip install dist/*.whl pytest
+          cd /tmp && python -m pytest "$GITHUB_WORKSPACE/tests" -q
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheel-macos-arm64
+          path: dist/*.whl
+
+  # Guards the layer that the wheels cannot: that the pinned submodule is the
+  # version the package claims, so a bumped submodule cannot ship silently.
+  check-pin:
+    name: upstream pin matches
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Submodule tag matches UPSTREAM_VERSION
+        run: |
+          declared=$(grep -oE '^UPSTREAM_VERSION = "[^"]+"' src/cooklang_rs/__init__.py | cut -d'"' -f2)
+          actual=$(git -C vendor/cooklang-rs describe --tags --exact-match)
+          echo "declared=$declared actual=$actual"
+          test "v$declared" = "$actual"
