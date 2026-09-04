@@ -14,6 +14,7 @@ every supported interpreter.
 """
 
 import os
+import pathlib
 import re
 
 from setuptools import setup
@@ -55,10 +56,37 @@ class BinaryDistribution(Distribution):
         return False
 
 
+def _check_single_native_library() -> None:
+    """Fail the build if `_generated/` holds libraries for more than one platform.
+
+    Generating on macOS and then in a Linux container leaves both a .dylib and
+    a .so behind, and the package-data glob would happily ship the pair -- a
+    silently bloated wheel carrying a library it can never load. Cheap to
+    check, and it turns a quiet packaging bug into a build failure.
+    """
+    generated = pathlib.Path(__file__).parent / "src" / "cooklang_rs" / "_generated"
+    libraries = sorted(
+        p.name
+        for pattern in ("*.so", "*.dylib", "*.dll")
+        for p in generated.glob(pattern)
+    )
+    if not libraries:
+        raise SystemExit(
+            "No native library in src/cooklang_rs/_generated/.\n"
+            "Run `python scripts/generate.py` before building a wheel."
+        )
+    if len(libraries) > 1:
+        raise SystemExit(
+            f"Multiple native libraries found: {', '.join(libraries)}.\n"
+            "A wheel targets one platform. Run `make clean` and regenerate."
+        )
+
+
 class PlatformWheel(bdist_wheel):
     def finalize_options(self) -> None:
         super().finalize_options()
         self.root_is_pure = False
+        _check_single_native_library()
 
     def get_tag(self) -> tuple[str, str, str]:
         _python, _abi, platform = super().get_tag()

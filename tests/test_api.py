@@ -191,3 +191,23 @@ class TestModelTypes:
 
     def test_recipe_str_is_the_title(self):
         assert str(cooklang_rs.parse("---\ntitle: Pie\n---\n\nBake.")) == "Pie"
+
+
+class TestTimers:
+    def test_unnamed_timer_renders_as_its_duration(self):
+        recipe = cooklang_rs.parse("Fry for ~{5%minutes}.")
+
+        assert recipe.steps[0].text == "Fry for 5 minutes."
+        assert recipe.timers[0].name is None
+
+    def test_named_timer_also_renders_as_its_duration(self):
+        """The name labels the timer; the duration is what belongs in the prose."""
+        recipe = cooklang_rs.parse("Boil for ~eggs{3%minutes}.")
+
+        assert recipe.timers[0].name == "eggs"
+        assert recipe.steps[0].text == "Boil for 3 minutes."
+
+    def test_timer_without_a_duration_falls_back_to_its_name(self):
+        recipe = cooklang_rs.parse("Wait for the ~oven{}.")
+
+        assert recipe.steps[0].text == "Wait for the oven."

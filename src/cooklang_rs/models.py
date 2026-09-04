@@ -85,13 +85,21 @@ class Cookware:
 
 @dataclass(frozen=True, slots=True)
 class Timer:
-    """A timer, e.g. ``~simmer{20%minutes}``. ``name`` is ``None`` if unnamed."""
+    """A timer, e.g. ``~simmer{20%minutes}``. ``name`` is ``None`` if unnamed.
+
+    Rendering prefers the duration over the name, because that is what reads
+    correctly inline: "Boil for ~eggs{3%minutes}" should render as "Boil for
+    3 minutes", not "Boil for eggs". The name is a label for the timer, so it
+    is the fallback for a timer written without a duration.
+    """
 
     name: str | None
     quantity: Quantity | None = None
 
     def __str__(self) -> str:
-        return self.name or (self.quantity.text if self.quantity else "")
+        if self.quantity is not None and self.quantity.text:
+            return self.quantity.text
+        return self.name or ""
 
 
 @dataclass(frozen=True, slots=True)

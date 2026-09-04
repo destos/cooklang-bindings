@@ -104,12 +104,32 @@ and `steps` / `notes` views. `Quantity` has `value` (an `int` for whole numbers,
 keeps fractions as `1/2` rather than `0.5`. Use `text` for display and
 `value`/`unit` for arithmetic.
 
+Timers render inline as their duration rather than their name, because that is
+what reads correctly in prose: `Boil for ~eggs{3%minutes}` becomes
+`Boil for 3 minutes`. A timer written without a duration falls back to its name.
+
 `combine_ingredients(ingredients)` totals repeats, letting upstream do the unit
 arithmetic: two `@salt{2%tsp}` and `@salt{3%tsp}` mentions become one `5 tsp`.
 Amounts in units that cannot be added stay separate under the same name.
 
 All model types are frozen dataclasses holding no FFI objects, so they compare,
 hash and pickle normally.
+
+### What is not wrapped
+
+Upstream also exposes aisle-config and shopping-list functions
+(`parse_aisle_config`, `use_common_names`, `parse_shopping_list`, and friends).
+They work on Python — they are verified to — but they are outside what this
+package set out to cover, so they have no Pythonic layer. Reach them through
+the generated module if you need them:
+
+```python
+from cooklang_rs._ffi import ffi
+config = ffi.parse_aisle_config(text)
+```
+
+That is the raw UniFFI surface: mechanical, and not covered by this package's
+API stability.
 
 ### Errors
 

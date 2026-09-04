@@ -68,6 +68,13 @@ def main() -> int:
         sys.exit(f"expected library not found: {lib_path}")
 
     OUT.mkdir(parents=True, exist_ok=True)
+
+    # Drop any library left behind by a build for another platform. Without
+    # this, generating on macOS and then in a Linux container leaves both a
+    # .dylib and a .so in place and the wheel ships the pair.
+    for stale in (*OUT.glob("*.so"), *OUT.glob("*.dylib"), *OUT.glob("*.dll")):
+        print(f"removing stale {stale.name}")
+        stale.unlink()
     run(
         [
             "cargo",
