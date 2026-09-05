@@ -234,11 +234,19 @@ def _quantities_from_grouped(grouped: Any) -> tuple[Quantity, ...]:
     for key, value in grouped.items():
         if isinstance(value, ffi.Value.EMPTY):
             continue
+        unit = key.name or None
         quantities.append(
             Quantity(
                 value=_value(value),
-                unit=key.name or None,
-                text=(ffi.format_value(value) or "").strip(),
+                unit=unit,
+                # format_amount, not format_value: `text` must include the unit
+                # here exactly as it does on a Quantity from parse(). Using
+                # format_value gave "2" where parse() gives "2 tsp", so the
+                # same type meant two different things depending on where it
+                # came from, and rendering a total showed a bare number.
+                text=ffi.format_amount(
+                    ffi.Amount(quantity=value, units=unit)
+                ).strip(),
             )
         )
     return tuple(quantities)

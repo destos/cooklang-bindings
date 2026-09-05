@@ -214,8 +214,8 @@ off what is already checked:
 ...         mark = "x" if name in done else " "
 ...         print(f"  [{mark}] {name} {totals[name][0].text}")
 [dairy]
-  [ ] milk 500
+  [ ] milk 500 ml
 [bakery]
-  [x] bread 2
+  [x] bread 2 slices
 
 ```

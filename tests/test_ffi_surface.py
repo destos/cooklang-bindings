@@ -434,3 +434,63 @@ class TestApplyCommonNames:
         merged = config.apply_common_names(totals)
 
         assert set(merged) == {"onion", "saffron"}
+
+
+class TestCombineReconciliation:
+    """What combine_ingredients does and does not reconcile.
+
+    Measured against real behaviour rather than assumed, because a consumer
+    asked whether these are deliberate semantics or gaps. They are upstream's
+    semantics: quantities are grouped by unit *string*, and the canonical
+    parser carries no unit knowledge, so nothing can be converted.
+    """
+
+    def _totals(self, source):
+        return cooklang.combine_ingredients(cooklang.parse(source).ingredients)
+
+    def test_same_unit_adds(self):
+        totals = self._totals("Add @salt{2%tsp}.\n\nAdd @salt{1%tsp}.\n")
+
+        assert [(q.value, q.unit) for q in totals["salt"]] == [(3, "tsp")]
+
+    def test_no_conversion_within_a_dimension(self):
+        totals = self._totals("Add @flour{500%g}.\n\nAdd @flour{1%kg}.\n")
+
+        assert sorted((q.unit, q.value) for q in totals["flour"]) == [
+            ("g", 500),
+            ("kg", 1),
+        ]
+
+    def test_no_plural_normalisation(self):
+        """Units are compared as strings, so 'ear' and 'ears' do not merge."""
+        totals = self._totals("Add @corn{2%ears}.\n\nAdd @corn{1%ear}.\n")
+
+        assert sorted((q.unit, q.value) for q in totals["corn"]) == [
+            ("ear", 1),
+            ("ears", 2),
+        ]
+
+    def test_bare_mention_alongside_a_quantified_one_is_not_represented(self):
+        """The ingredient and its total survive; the extra bare mention does not.
+
+        Upstream does return an Empty entry for it -- this layer filters those
+        out. Asserted so the behaviour is deliberate and visible rather than
+        incidental.
+        """
+        totals = self._totals("Add @salt{2%tsp}.\n\nSeason with @salt.\n")
+
+        assert [(q.value, q.unit) for q in totals["salt"]] == [(2, "tsp")]
+
+    def test_a_bare_only_ingredient_survives_with_no_quantities(self):
+        totals = self._totals("Add @salt.\n\nAdd @salt.\n")
+
+        assert "salt" in totals
+        assert totals["salt"] == ()
+
+    def test_total_text_carries_its_unit(self):
+        """`text` must mean the same thing as it does on a parsed Quantity."""
+        totals = self._totals("Add @milk{500%ml}.\n\nAdd @milk{200%ml}.\n")
+        parsed = cooklang.parse("Add @milk{700%ml}.").ingredients[0].quantity
+
+        assert totals["milk"][0].text == "700 ml"
+        assert totals["milk"][0].text == parsed.text

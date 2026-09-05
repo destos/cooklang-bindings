@@ -118,7 +118,7 @@ being totalled — they stay as separate entries:
 >>> recipe = cooklang.parse("Add @water{1%kg} then @water{500%g}.")
 >>> totals = cooklang.combine_ingredients(recipe.ingredients)
 >>> sorted(q.text for q in totals["water"])
-['1', '500']
+['1 kg', '500 g']
 
 ```
 

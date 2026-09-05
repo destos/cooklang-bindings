@@ -134,7 +134,7 @@ name to a tuple of totals.
 ```pycon
 >>> recipe = cooklang.parse("Add @salt{2%tsp} then @salt{3%tsp}.")
 >>> cooklang.combine_ingredients(recipe.ingredients)
-{'salt': (Quantity(value=5, unit='tsp', text='5'),)}
+{'salt': (Quantity(value=5, unit='tsp', text='5 tsp'),)}
 
 ```
 
@@ -159,6 +159,48 @@ from a shopping list:
 
 ```
 
+### What it does not reconcile
+
+`combine_ingredients` groups by name and adds amounts **that share a unit
+string**. It does not reconcile beyond that, and the tuple is how it says so.
+
+It does not convert within a dimension, because the canonical parser is built
+with an empty unit converter and has no knowledge of units at all:
+
+```pycon
+>>> recipe = cooklang.parse("Add @flour{500%g} then @flour{1%kg}.")
+>>> sorted((q.unit, q.value) for q in cooklang.combine_ingredients(recipe.ingredients)["flour"])
+[('g', 500), ('kg', 1)]
+
+```
+
+It does not normalise plurals, since units are compared as strings:
+
+```pycon
+>>> recipe = cooklang.parse("Add @corn{2%ears} then @corn{1%ear}.")
+>>> sorted((q.unit, q.value) for q in cooklang.combine_ingredients(recipe.ingredients)["corn"])
+[('ear', 1), ('ears', 2)]
+
+```
+
+And an unquantified mention alongside a quantified one does not appear in the
+tuple. The ingredient is kept, and the quantified total is exact, but the fact
+that a further "and more to taste" mention existed is not represented:
+
+```pycon
+>>> recipe = cooklang.parse("Add @salt{2%tsp}.\n\nSeason with @salt.\n")
+>>> cooklang.combine_ingredients(recipe.ingredients)
+{'salt': (Quantity(value=2, unit='tsp', text='2 tsp'),)}
+
+```
+
+!!! note "Reconciliation is the caller's job"
+
+    This is a deliberate division rather than a gap: totalling what is
+    unambiguous is the parser's job, and deciding that 500 g plus 1 kg should
+    be shown as "1.5 kg" is a domain decision about your reader. An app that
+    wants one actionable number should layer that on top.
+
 ### Totalling a subset
 
 `indices` selects which occurrences to include — the steps a user has ticked,
@@ -167,7 +209,7 @@ say. Positions refer to the sequence you passed in.
 ```pycon
 >>> recipe = cooklang.parse("Add @salt{2%tsp}, @pepper{1%tsp} then @salt{3%tsp}.")
 >>> cooklang.combine_ingredients(recipe.ingredients, indices=[0, 2])
-{'salt': (Quantity(value=5, unit='tsp', text='5'),)}
+{'salt': (Quantity(value=5, unit='tsp', text='5 tsp'),)}
 
 ```
 

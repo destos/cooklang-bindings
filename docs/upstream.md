@@ -129,7 +129,7 @@ The user-visible result is simply that it works:
 ```pycon
 >>> recipe = cooklang.parse("Add @salt{2%tsp} then @salt{3%tsp}.")
 >>> cooklang.combine_ingredients(recipe.ingredients)
-{'salt': (Quantity(value=5, unit='tsp', text='5'),)}
+{'salt': (Quantity(value=5, unit='tsp', text='5 tsp'),)}
 
 ```
 
