@@ -47,9 +47,14 @@ That is a weaker constraint than `abi3`, which would still pin a minimum CPython
 | Platform | Wheel tag | Notes |
 | --- | --- | --- |
 | Linux x86_64 | `py3-none-manylinux_2_28_x86_64` | glibc 2.28+ (RHEL 8, Debian 10, Ubuntu 18.10+) |
+| Linux aarch64 | `py3-none-manylinux_2_28_aarch64` | glibc 2.28+; arm64 servers and Docker on Apple Silicon |
 | macOS arm64 | `py3-none-macosx_11_0_arm64` | Apple Silicon, macOS 11+ |
 
-Python 3.10+; built and tested on 3.14. Other platforms must build from source.
+Python 3.10+, with each wheel tested on 3.10 through 3.14 in CI. Since there is
+no ABI tag the matrix is platform-only, so a new Python release needs no new
+wheels. Other platforms — Windows, Intel macOS, musl-based Linux — have no
+published wheel; `pip install` fails cleanly there rather than installing
+something that cannot load.
 
 ## Upstream version
 
@@ -78,9 +83,14 @@ make test          # run the suite against the working tree
 make wheel         # build a wheel for this machine
 ```
 
-`make wheel-linux` builds the manylinux x86_64 wheel in Docker, using the same
-recipe as CI. On an Apple Silicon host it runs under emulation — correct, but
-slow.
+`make wheel-linux` builds the manylinux **x86_64** wheel in Docker, using the
+same recipe as CI. On an Apple Silicon host it runs that under emulation —
+correct, but slow.
+
+There is no local target for the aarch64 wheel: CI builds it on a native arm64
+runner, which is both faster and the artifact that actually ships. To test an
+arm64 wheel, take it from the Wheels workflow run rather than building one
+here.
 
 Generated artifacts are **not** committed. `scripts/generate.py` recreates them,
 and `make clean` removes them.

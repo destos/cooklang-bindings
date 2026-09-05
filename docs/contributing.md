@@ -30,9 +30,14 @@ make wheel         # build a wheel for this machine
         python scripts/generate.py
     ```
 
-`make wheel-linux` builds the manylinux x86_64 wheel in Docker, using the same
-recipe as CI. On an Apple Silicon host it runs under emulation — correct, but
-slow.
+`make wheel-linux` builds the manylinux **x86_64** wheel in Docker, using the
+same recipe as CI. On an Apple Silicon host it runs that under emulation —
+correct, but slow.
+
+There is no local target for the aarch64 wheel: CI builds it on a native arm64
+runner, which is both faster and the artifact that actually ships. To test an
+arm64 wheel, take it from the Wheels workflow run rather than building one
+here.
 
 ## Running the tests
 

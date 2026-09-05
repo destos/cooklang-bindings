@@ -31,11 +31,17 @@ CPython version. Here there is no minimum imposed by the binary — only the
 | Platform | Wheel tag | Notes |
 | --- | --- | --- |
 | Linux x86_64 | `py3-none-manylinux_2_28_x86_64` | glibc 2.28+ (RHEL 8, Debian 10, Ubuntu 18.10+) |
+| Linux aarch64 | `py3-none-manylinux_2_28_aarch64` | glibc 2.28+; arm64 servers and Docker on Apple Silicon |
 | macOS arm64 | `py3-none-macosx_11_0_arm64` | Apple Silicon, macOS 11+ |
 
-Any other platform — Windows, Linux aarch64, macOS x86_64 — has no published
-wheel and must [build from source](contributing.md#build-from-source), which
-does need a Rust toolchain.
+Because there is no ABI tag, this list is platform-only: each row covers
+every supported Python, so a new interpreter release needs no new wheels.
+
+Any other platform — Windows, macOS x86_64 (Intel), musl-based Linux such as
+Alpine — has no published wheel. `pip install` there fails cleanly with "no
+matching distribution" rather than installing something broken; those platforms
+must [build from source](contributing.md#build-from-source), which does need a
+Rust toolchain.
 
 ## Verifying the install
 
