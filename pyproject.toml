@@ -57,3 +57,7 @@ cooklang = ["py.typed"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# `--doctest-modules` makes pytest import every module under the paths it is
+# given, and docs/_extensions holds a Griffe plugin that only the docs
+# toolchain installs. It is build tooling, not a module to doctest.
+norecursedirs = ["_extensions", "build", "vendor", ".venv", "*.egg"]
