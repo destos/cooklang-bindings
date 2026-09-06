@@ -42,7 +42,8 @@ jobs:
         run: |
           uv venv
           uv pip install pytest build
-          PYTHONPATH=src .venv/bin/python -m pytest tests --doctest-glob='*.md' docs -q
+          PYTHONPATH=src .venv/bin/python -m pytest tests --doctest-glob='*.md' docs \
+            --doctest-modules src/cooklang/contrib.py -q
 
       - name: Build the docs
         run: make docs

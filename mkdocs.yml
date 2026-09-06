@@ -54,6 +54,7 @@ nav:
       - guide/aisle.md
       - guide/shopping.md
       - guide/values.md
+  - What this project adds: contrib.md
   - Syntax extensions: extensions.md
   - Relationship to cooklang-rs: upstream.md
   - API reference:

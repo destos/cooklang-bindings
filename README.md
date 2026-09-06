@@ -217,6 +217,31 @@ resolves every reference eagerly at parse time, so a caller never holds an
 unresolved reference to dereference. They are still exercised by the test suite,
 and reachable on `cooklang._ffi.ffi` if you want them.
 
+### What this project adds
+
+Most of the API maps onto something cooklang-rs does. The parts that are ours,
+with no upstream function behind them, live in `cooklang.contrib`:
+
+```python
+from cooklang import contrib
+
+contrib.unquantified_mentions(recipe.ingredients)  # {"salt": 2}
+contrib.is_declaration_only(step)                  # True for a bare @ingredient block
+```
+
+`unquantified_mentions` counts what `combine_ingredients` leaves out: a recipe
+using `@salt{2%tsp}` and later a bare `@salt` totals to `2 tsp`, with the second
+mention absent. That is right for a shopping list and wrong for anything that
+needs to tell "2 tsp" from "2 tsp and more to taste". Upstream cannot answer
+this — its grouping map collapses every unquantified mention into one entry —
+so the count is computed here.
+
+The namespace is named after `django.contrib`, for the same reason: these
+encode opinions about how an application should read a recipe, and keeping them
+separate stops them being mistaken for parser semantics. Some conveniences on
+the model types are also ours rather than upstream's — see
+`docs/contrib.md` for the full list.
+
 ### Errors
 
 Cooklang is forgiving and nearly any text is a valid recipe: malformed metadata

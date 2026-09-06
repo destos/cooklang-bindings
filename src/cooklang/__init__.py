@@ -14,6 +14,7 @@ UniFFI. It contains no parser logic of its own.
 
 from __future__ import annotations
 
+from . import contrib
 from .aisle import AisleCategory, AisleConfig, AisleIngredient, parse_aisle_config
 from .models import (
     Cookware,
@@ -45,6 +46,8 @@ from .shopping import (
 from .values import format_value, parse_value
 
 __all__ = [
+    # Helpers this project adds, which upstream does not provide.
+    "contrib",
     # Recipes
     "parse",
     "combine_ingredients",
@@ -86,7 +89,7 @@ __all__ = [
     "UPSTREAM_VERSION",
 ]
 
-__version__ = "0.2.1"
+__version__ = "0.3.0"
 
 UPSTREAM_VERSION = "0.18.7"
 """The pinned cooklang-rs release these bindings are generated from."""
