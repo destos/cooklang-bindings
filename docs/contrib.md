@@ -30,6 +30,20 @@ mistaken for the core contract.
       members:
         - unquantified_mentions
         - is_declaration_only
+        - timer_duration
+
+### Why `timer_duration` is not on `Timer`
+
+A timer's unit is free text, and the canonical parser has no unit knowledge, so
+`min`, `mins` and `Minutes` arrive as three unrelated strings. Turning those
+into a duration means choosing which spellings to recognise and what an
+unlabelled `~{20}` means — decisions about your corpus, not facts about
+Cooklang. Putting them on `Timer` would make a lossy normalisation look like
+parsed data, so the raw number and unit stay there and the interpretation lives
+here.
+
+It returns `None` rather than guessing whenever the timer is not a definite
+length of time, so a caller can tell "no duration" from a wrong one.
 
 ## Conveniences in the main namespace
 

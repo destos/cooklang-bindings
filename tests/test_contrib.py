@@ -6,6 +6,10 @@ not pinned to cooklang-rs behaviour. Their semantics are ours to keep stable.
 
 from __future__ import annotations
 
+from datetime import timedelta
+
+import pytest
+
 import cooklang
 from cooklang import contrib
 
@@ -95,3 +99,78 @@ class TestIsDeclarationOnly:
 
         assert [s.text for s in kept] == ["Simmer for 20 minutes."]
         assert [i.name for i in recipe.ingredients] == ["leeks", "potatoes"]
+
+
+class TestTimerDuration:
+    """Timers carry a number and a free-text unit; this makes them comparable."""
+
+    def _timer(self, source):
+        return cooklang.parse(f"Wait {source}.").timers[0]
+
+    @pytest.mark.parametrize(
+        ("source", "expected"),
+        [
+            ("~{90%seconds}", timedelta(seconds=90)),
+            ("~{45%mins}", timedelta(minutes=45)),
+            ("~{5%minutes}", timedelta(minutes=5)),
+            ("~{10%min}", timedelta(minutes=10)),
+            ("~{2%hours}", timedelta(hours=2)),
+            ("~{1.5%h}", timedelta(hours=1, minutes=30)),
+            ("~{1%day}", timedelta(days=1)),
+        ],
+    )
+    def test_common_unit_spellings(self, source, expected):
+        assert contrib.timer_duration(self._timer(source)) == expected
+
+    def test_units_are_matched_case_insensitively(self):
+        assert contrib.timer_duration(self._timer("~{2%Minutes}")) == timedelta(
+            minutes=2
+        )
+
+    def test_a_named_timer_still_has_a_duration(self):
+        assert contrib.timer_duration(self._timer("~eggs{3%minutes}")) == timedelta(
+            minutes=3
+        )
+
+    def test_durations_become_summable(self):
+        """The point of the conversion: unit strings cannot be added, these can."""
+        recipe = cooklang.parse("Simmer ~{45%mins}. Rest ~{1.5%h}.")
+
+        total = sum(
+            (contrib.timer_duration(t) for t in recipe.timers), start=timedelta()
+        )
+
+        assert total == timedelta(hours=2, minutes=15)
+
+    @pytest.mark.parametrize(
+        "source",
+        [
+            "~{a while}",      # text duration
+            "~{1-2%hours}",    # a range, which the canonical parser reports as text
+            "~{20}",           # no unit at all
+            "~oven{}",         # named, no quantity
+            "~{5%fortnights}", # unit we do not recognise
+        ],
+    )
+    def test_returns_none_rather_than_guessing(self, source):
+        assert contrib.timer_duration(self._timer(source)) is None
+
+    def test_assume_unit_covers_an_unlabelled_duration(self):
+        timer = self._timer("~{20}")
+
+        assert contrib.timer_duration(timer) is None
+        assert contrib.timer_duration(timer, assume_unit="minutes") == timedelta(
+            minutes=20
+        )
+
+    def test_assume_unit_does_not_override_a_stated_one(self):
+        timer = self._timer("~{2%hours}")
+
+        assert contrib.timer_duration(timer, assume_unit="minutes") == timedelta(
+            hours=2
+        )
+
+    def test_assume_unit_is_itself_validated(self):
+        timer = self._timer("~{20}")
+
+        assert contrib.timer_duration(timer, assume_unit="fortnights") is None

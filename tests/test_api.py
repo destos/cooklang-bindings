@@ -22,6 +22,22 @@ def test_empty_input_is_an_empty_recipe():
     assert recipe.tags == ()
 
 
+def test_an_unparseable_recipe_raises_cooklang_error():
+    """`~{}` gives upstream neither a duration nor a name, and it refuses.
+
+    Cooklang is forgiving enough that almost nothing raises, so this is a rare
+    real reproducer -- worth pinning, since it is the only path that exercises
+    CooklangError.
+    """
+    with pytest.raises(cooklang.CooklangError):
+        cooklang.parse("Wait for ~{}.")
+
+
+def test_a_parse_error_names_the_problem():
+    with pytest.raises(cooklang.CooklangError, match="Invalid timer"):
+        cooklang.parse("Wait for ~{}.")
+
+
 def test_non_string_input_is_a_type_error():
     with pytest.raises(TypeError):
         cooklang.parse(None)

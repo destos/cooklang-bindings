@@ -231,6 +231,7 @@ from cooklang import contrib
 
 contrib.unquantified_mentions(recipe.ingredients)  # {"salt": 2}
 contrib.is_declaration_only(step)                  # True for a bare @ingredient block
+contrib.timer_duration(timer)                      # timedelta(minutes=45), or None
 ```
 
 `unquantified_mentions` counts what `combine_ingredients` leaves out: a recipe

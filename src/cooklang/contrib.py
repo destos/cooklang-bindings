@@ -25,11 +25,26 @@ Import it explicitly::
 from __future__ import annotations
 
 from collections import Counter
-from typing import Iterable, Sequence
+from datetime import timedelta
+from typing import Sequence
 
-from .models import Ingredient, Step
+from .models import Ingredient, Step, Timer
 
-__all__ = ["unquantified_mentions", "is_declaration_only"]
+__all__ = ["unquantified_mentions", "is_declaration_only", "timer_duration"]
+
+# Unit spellings a timer may use, mapped to the timedelta keyword they mean.
+# Cooklang does not constrain unit names and the canonical parser carries no
+# unit knowledge, so "min", "mins" and "Minutes" arrive as three distinct
+# strings. Matching is case-insensitive.
+_DURATION_UNITS = {
+    "s": "seconds", "sec": "seconds", "secs": "seconds",
+    "second": "seconds", "seconds": "seconds",
+    "m": "minutes", "min": "minutes", "mins": "minutes",
+    "minute": "minutes", "minutes": "minutes",
+    "h": "hours", "hr": "hours", "hrs": "hours",
+    "hour": "hours", "hours": "hours",
+    "d": "days", "day": "days", "days": "days",
+}
 
 
 def unquantified_mentions(ingredients: Sequence[Ingredient]) -> dict[str, int]:
@@ -100,3 +115,64 @@ def is_declaration_only(step: Step) -> bool:
     if not step.ingredients:
         return False
     return step.text == " ".join(item.name for item in step.ingredients)
+
+
+def timer_duration(
+    timer: Timer, *, assume_unit: str | None = None
+) -> timedelta | None:
+    """Interpret a timer's duration as a :class:`~datetime.timedelta`.
+
+    A timer carries a number and a **free-text unit string**: upstream's
+    canonical parser has no unit knowledge, so ``min``, ``mins`` and
+    ``Minutes`` reach you as three unrelated strings and cannot be summed or
+    compared. This maps the common spellings of seconds, minutes, hours and
+    days onto a real duration.
+
+    It returns ``None`` rather than guessing whenever the timer does not
+    describe a definite length of time — a text duration such as
+    ``~{a while}``, a range, an unrecognised unit, a timer with no quantity at
+    all, or a bare ``~{20}`` with no unit. Distinguishing "no duration" from a
+    wrong one matters more here than always producing a number.
+
+    Args:
+        timer: The timer to interpret.
+        assume_unit: Unit to use when the timer gives none, for a corpus whose
+            convention you know — ``"minutes"`` is the usual one. Left unset,
+            an unlabelled duration returns ``None``.
+
+    Returns:
+        The duration, or ``None`` if it cannot be determined.
+
+    Example:
+        >>> import cooklang
+        >>> from cooklang import contrib
+        >>> recipe = cooklang.parse("Simmer for ~{45%mins}. Rest ~{1.5%h}.")
+        >>> [contrib.timer_duration(t) for t in recipe.timers]
+        [datetime.timedelta(seconds=2700), datetime.timedelta(seconds=5400)]
+        >>> sum(
+        ...     (contrib.timer_duration(t) for t in recipe.timers),
+        ...     start=timedelta(),
+        ... )
+        datetime.timedelta(seconds=8100)
+
+        Anything that is not a definite duration is ``None``, not a guess:
+
+        >>> vague = cooklang.parse("Wait ~{a while}.").timers[0]
+        >>> contrib.timer_duration(vague) is None
+        True
+    """
+    quantity = timer.quantity
+    if quantity is None or not isinstance(quantity.value, (int, float)):
+        return None
+    if isinstance(quantity.value, bool):  # bool is an int; never a duration
+        return None
+
+    unit = quantity.unit or assume_unit
+    if unit is None:
+        return None
+
+    keyword = _DURATION_UNITS.get(unit.strip().lower())
+    if keyword is None:
+        return None
+
+    return timedelta(**{keyword: quantity.value})
