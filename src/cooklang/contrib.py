@@ -147,8 +147,9 @@ def timer_duration(
         >>> import cooklang
         >>> from cooklang import contrib
         >>> recipe = cooklang.parse("Simmer for ~{45%mins}. Rest ~{1.5%h}.")
-        >>> [contrib.timer_duration(t) for t in recipe.timers]
-        [datetime.timedelta(seconds=2700), datetime.timedelta(seconds=5400)]
+        >>> from datetime import timedelta
+        >>> contrib.timer_duration(recipe.timers[0])
+        datetime.timedelta(seconds=2700)
         >>> sum(
         ...     (contrib.timer_duration(t) for t in recipe.timers),
         ...     start=timedelta(),
