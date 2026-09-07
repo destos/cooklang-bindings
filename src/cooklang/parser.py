@@ -7,7 +7,10 @@ from typing import TYPE_CHECKING, Any, Sequence
 from ._ffi import ffi
 from .models import (
     Cookware,
+    CookwareRef,
     Ingredient,
+    IngredientRef,
+    Item,
     NameAndUrl,
     Note,
     Quantity,
@@ -16,7 +19,9 @@ from .models import (
     RecipeTime,
     Section,
     Step,
+    TextItem,
     Timer,
+    TimerRef,
 )
 
 __all__ = ["parse", "combine_ingredients", "CooklangError"]
@@ -144,20 +149,36 @@ def _metadata(recipe: Any) -> dict[str, Any]:
     return metadata
 
 
-def _step_text(items: Any, ingredients: list[Ingredient], cookware: list[Cookware],
-               timers: list[Timer]) -> str:
-    """Render a step's items back to prose, with components rendered inline."""
-    parts: list[str] = []
-    for item in items:
+def _items(
+    raw_items: Any,
+    ingredients: list[Ingredient],
+    cookware: list[Cookware],
+    timers: list[Timer],
+) -> tuple[Item, ...]:
+    """Convert a step's items, resolving each reference as it goes.
+
+    A reference carries both its index and the resolved object. The object is
+    the same instance held in the recipe's component list rather than a copy,
+    so a caller can use either without the two being able to disagree.
+    """
+    items: list[Item] = []
+    for item in raw_items:
         if isinstance(item, ffi.Item.TEXT):
-            parts.append(item.value)
+            items.append(TextItem(value=item.value))
         elif isinstance(item, ffi.Item.INGREDIENT_REF):
-            parts.append(ingredients[item.index].name)
+            items.append(
+                IngredientRef(index=item.index, ingredient=ingredients[item.index])
+            )
         elif isinstance(item, ffi.Item.COOKWARE_REF):
-            parts.append(cookware[item.index].name)
+            items.append(CookwareRef(index=item.index, cookware=cookware[item.index]))
         elif isinstance(item, ffi.Item.TIMER_REF):
-            parts.append(str(timers[item.index]))
-    return "".join(parts).strip()
+            items.append(TimerRef(index=item.index, timer=timers[item.index]))
+    return tuple(items)
+
+
+def _step_text(items: tuple[Item, ...]) -> str:
+    """Render a step's items back to prose, with components rendered inline."""
+    return "".join(str(item) for item in items).strip()
 
 
 def parse(text: str, *, scale: float = 1.0) -> Recipe:
@@ -193,10 +214,12 @@ def parse(text: str, *, scale: float = 1.0) -> Recipe:
                 continue
             raw_step = block[0]
             step_number += 1
+            step_items = _items(raw_step.items, ingredients, cookware, timers)
             blocks.append(
                 Step(
                     number=step_number,
-                    text=_step_text(raw_step.items, ingredients, cookware, timers),
+                    text=_step_text(step_items),
+                    items=step_items,
                     ingredients=tuple(ingredients[i] for i in raw_step.ingredient_refs),
                     cookware=tuple(cookware[i] for i in raw_step.cookware_refs),
                     timers=tuple(timers[i] for i in raw_step.timer_refs),

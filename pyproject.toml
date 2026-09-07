@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "cooklang-bindings"
-version = "0.3.0"
+version = "0.4.0"
 description = "Python bindings for cooklang-rs, the official Cooklang parser"
 readme = "README.md"
 requires-python = ">=3.10"

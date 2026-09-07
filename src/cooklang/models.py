@@ -18,6 +18,11 @@ __all__ = [
     "Cookware",
     "Timer",
     "Step",
+    "TextItem",
+    "IngredientRef",
+    "CookwareRef",
+    "TimerRef",
+    "Item",
     "Note",
     "Section",
     "Recipe",
@@ -137,6 +142,58 @@ class Timer:
 
 
 @dataclass(frozen=True, slots=True)
+class TextItem:
+    """Literal text in a step, between the components."""
+
+    value: str
+
+    def __str__(self) -> str:
+        return self.value
+
+
+@dataclass(frozen=True, slots=True)
+class IngredientRef:
+    """An ingredient at its point of use in a step.
+
+    ``index`` is the position in :attr:`Recipe.ingredients`, and is what links
+    this occurrence to the recipe's ingredient list. ``ingredient`` is that
+    entry itself -- the very same object, not a copy, so the two cannot drift.
+    """
+
+    index: int
+    ingredient: Ingredient
+
+    def __str__(self) -> str:
+        return self.ingredient.name
+
+
+@dataclass(frozen=True, slots=True)
+class CookwareRef:
+    """A piece of cookware at its point of use in a step."""
+
+    index: int
+    cookware: Cookware
+
+    def __str__(self) -> str:
+        return self.cookware.name
+
+
+@dataclass(frozen=True, slots=True)
+class TimerRef:
+    """A timer at its point of use in a step."""
+
+    index: int
+    timer: Timer
+
+    def __str__(self) -> str:
+        return str(self.timer)
+
+
+Item = TextItem | IngredientRef | CookwareRef | TimerRef
+"""One piece of a step: literal text, or a component at its position."""
+
+
+@dataclass(frozen=True, slots=True)
 class Step:
     """A single cooking instruction."""
 
@@ -147,6 +204,17 @@ class Step:
     ingredients: tuple[Ingredient, ...] = ()
     cookware: tuple[Cookware, ...] = ()
     timers: tuple[Timer, ...] = ()
+    items: tuple[Item, ...] = ()
+    """The step in order, as literal text and components at their positions.
+
+    Use this to mark up components where they occur -- "whisk the **flour
+    300 g**" -- rather than rendering plain prose with a summary above it.
+    ``"".join(str(item) for item in step.items)`` reproduces :attr:`text`.
+
+    The component tuples above answer "what does this step use"; this answers
+    "where". An ingredient used twice at different amounts appears twice here,
+    each with its own index, which is what tells the two occurrences apart.
+    """
 
     def __str__(self) -> str:
         return self.text

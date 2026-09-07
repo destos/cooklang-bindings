@@ -10,6 +10,10 @@ instances compare, hash and pickle like any other Python value.
         - Recipe
         - Section
         - Step
+        - TextItem
+        - IngredientRef
+        - CookwareRef
+        - TimerRef
         - Note
         - Ingredient
         - Cookware

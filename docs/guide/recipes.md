@@ -231,6 +231,68 @@ the same thing combine instead of sitting side by side. See
 [Aisle configuration](aisle.md#totalling-under-common-names) for a worked
 example.
 
+## Marking components inline
+
+`Step.text` renders a step as prose. `Step.items` gives the same step as a
+sequence, so you can mark each component where it occurs rather than listing
+them above the text:
+
+```pycon
+>>> import cooklang
+>>> from cooklang import IngredientRef
+>>> step = cooklang.parse("Whisk @flour{300%g} and @salt{1%tsp} in a #bowl{}.").steps[0]
+>>> for item in step.items:
+...     print(f"{type(item).__name__:15} {str(item)!r}")
+TextItem        'Whisk '
+IngredientRef   'flour'
+TextItem        ' and '
+IngredientRef   'salt'
+TextItem        ' in a '
+CookwareRef     'bowl'
+TextItem        '.'
+
+```
+
+Joining the items reproduces the text, so the two never disagree:
+
+```pycon
+>>> "".join(str(item) for item in step.items).strip() == step.text
+True
+
+```
+
+Each reference carries an `index` into the recipe's component list *and* the
+resolved object — the same instance, not a copy:
+
+```pycon
+>>> recipe = cooklang.parse("Whisk @flour{300%g}.")
+>>> ref = recipe.steps[0].items[1]
+>>> (ref.index, ref.ingredient.name, ref.ingredient.quantity.text)
+(0, 'flour', '300 g')
+>>> ref.ingredient is recipe.ingredients[ref.index]
+True
+
+```
+
+That matters when an ingredient appears more than once at different amounts.
+`Step.ingredients` tells you what a step uses; `items` tells you which
+occurrence sat where, so "roll on a floured surface" can show *its* amount
+rather than the first one:
+
+```pycon
+>>> recipe = cooklang.parse(
+...     "Rub @flour{300%g} into the butter.\n\nRoll on a @flour{30%g} surface.\n"
+... )
+>>> [
+...     item.ingredient.quantity.text
+...     for step in recipe.steps
+...     for item in step.items
+...     if isinstance(item, IngredientRef)
+... ]
+['300 g', '30 g']
+
+```
+
 ## Blank lines delimit steps
 
 Consecutive lines with no blank line between them are **one** step — that is a

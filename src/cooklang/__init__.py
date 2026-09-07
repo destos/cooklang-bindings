@@ -18,7 +18,10 @@ from . import contrib
 from .aisle import AisleCategory, AisleConfig, AisleIngredient, parse_aisle_config
 from .models import (
     Cookware,
+    CookwareRef,
     Ingredient,
+    IngredientRef,
+    Item,
     NameAndUrl,
     Note,
     Quantity,
@@ -27,7 +30,9 @@ from .models import (
     RecipeTime,
     Section,
     Step,
+    TextItem,
     Timer,
+    TimerRef,
 )
 from .parser import CooklangError, combine_ingredients, parse
 from .shopping import (
@@ -55,6 +60,11 @@ __all__ = [
     "Recipe",
     "Section",
     "Step",
+    "TextItem",
+    "IngredientRef",
+    "CookwareRef",
+    "TimerRef",
+    "Item",
     "Note",
     "Ingredient",
     "Cookware",
@@ -89,7 +99,7 @@ __all__ = [
     "UPSTREAM_VERSION",
 ]
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 
 UPSTREAM_VERSION = "0.18.7"
 """The pinned cooklang-rs release these bindings are generated from."""

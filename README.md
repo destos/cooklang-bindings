@@ -113,8 +113,12 @@ every quantity, so `scale=2.0` doubles the recipe.
 | `method` | `tuple[str, ...]` | just the step text |
 | `ingredients`, `cookware`, `timers` | `tuple[...]` | every occurrence, in document order |
 
-`Step` has `number`, `text` (markup-free, components rendered inline), and the
-`ingredients` / `cookware` / `timers` it uses. `Section` has `name`, `blocks`,
+`Step` has `number`, `text` (markup-free, components rendered inline), the
+`ingredients` / `cookware` / `timers` it uses, and `items` — the same step as a
+sequence of `TextItem` and component references, for marking components where
+they occur. Each reference carries an `index` into the recipe's component list
+and the resolved object, which is how two mentions of one ingredient at
+different amounts stay distinguishable. `Section` has `name`, `blocks`,
 and `steps` / `notes` views. `Quantity` has `value` (an `int` for whole numbers,
 `float`, `str`, or `None`), `unit`, and `text` — upstream's own rendering, which
 keeps fractions as `1/2` rather than `0.5`. Use `text` for display and
