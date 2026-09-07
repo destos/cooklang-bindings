@@ -125,6 +125,21 @@ Timer(name='oven', quantity=None)
 
 ```
 
+A timer's unit is free text, and the parser carries no unit knowledge, so
+`min`, `mins` and `Minutes` reach you as three unrelated strings:
+
+```pycon
+>>> [cooklang.parse(f"Wait ~{{45%{u}}}.").timers[0].quantity.unit
+...  for u in ("mins", "minutes", "Minutes")]
+['mins', 'minutes', 'Minutes']
+
+```
+
+To compare or add durations, use
+[`contrib.timer_duration`](../contrib.md#cooklang.contrib.timer_duration),
+which maps the common spellings onto a `timedelta` and returns `None` rather
+than guessing when a timer is not a definite length of time.
+
 ## Totalling ingredients
 
 [`combine_ingredients`][cooklang.parser.combine_ingredients] sums repeated
@@ -261,6 +276,19 @@ True
 
 ```
 
+A `TimerRef` stringifies as its duration rather than its name, matching how
+`text` has always rendered timers — so for a badge you probably want
+`ref.timer.name` as the label:
+
+```pycon
+>>> from cooklang import TimerRef
+>>> step = cooklang.parse("Boil for ~eggs{3%minutes}.").steps[0]
+>>> ref = next(i for i in step.items if isinstance(i, TimerRef))
+>>> (str(ref), ref.timer.name, ref.timer.quantity.text)
+('3 minutes', 'eggs', '3 minutes')
+
+```
+
 Each reference carries an `index` into the recipe's component list *and* the
 resolved object — the same instance, not a copy:
 
@@ -375,3 +403,24 @@ failure, which is rare. It subclasses `ValueError`, so
 True
 
 ```
+
+The one input known to trigger it is a timer with neither a duration nor a
+name, which upstream refuses outright rather than reading as text:
+
+```pycon
+>>> try:
+...     cooklang.parse("Wait for ~{}.")
+... except cooklang.CooklangError as exc:
+...     print("Invalid timer" in str(exc))
+True
+
+```
+
+Worth catching on ingest if you accept recipes you did not write.
+
+!!! note "Upstream prints a panic message to stderr"
+
+    Upstream signals this failure by panicking, and Rust's panic handler
+    writes to stderr before the error crosses the FFI boundary. The exception
+    is raised and catchable as shown above, but the message appears in your
+    logs regardless — it is noise, not an unhandled crash.
