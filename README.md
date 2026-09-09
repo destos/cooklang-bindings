@@ -56,6 +56,8 @@ wheels. Other platforms — Windows, Intel macOS, musl-based Linux — have no
 published wheel; `pip install` fails cleanly there rather than installing
 something that cannot load.
 
+Release notes are in [CHANGELOG.md](CHANGELOG.md).
+
 ## Upstream version
 
 These bindings are pinned to **cooklang-rs v0.18.7** (crate `cooklang-bindings`

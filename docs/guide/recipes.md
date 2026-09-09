@@ -434,15 +434,32 @@ be recovered — every field is `None` rather than a guess when it is unavailabl
 
 Worth catching on ingest if you accept recipes you did not write.
 
-!!! note "Upstream prints a panic message to stderr"
+!!! warning "A Rust panic on stderr is expected here, and is not a crash"
 
     Upstream signals these failures by panicking rather than returning an
-    error, and Rust's panic handler writes to stderr before the error crosses
-    the FFI boundary. The exception is raised and catchable as shown above, but
-    the panic text appears in your logs regardless — it is noise, not an
-    unhandled crash, and a batch job that logs it has not died.
+    error. Rust's panic handler writes to stderr *before* the error crosses the
+    FFI boundary, so you will see something like this even when your
+    `except` block handles it cleanly:
 
-    The diagnostic fields above exist because that panic is also where
-    upstream's own error information ends up; they recover it from the panic
-    text. Removing the panic entirely needs an upstream change — see
-    `UPSTREAM_ISSUES.md` in the repository.
+    ```text
+    thread '<unnamed>' panicked at bindings/src/lib.rs:25:70:
+    called `Result::unwrap()` on an `Err` value: SourceReport { buf: [SourceDiag {
+      severity: Error, stage: Parse, message: "Invalid cookware name: is empty", ...
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+    ```
+
+    **The process has not died.** The exception was raised, and if you caught it
+    your program carried on. A batch job that prints this for one bad recipe
+    still finishes the rest. If you are here because you searched for that
+    text: that is all it is.
+
+    It cannot be suppressed from Python. The output happens inside Rust, and the
+    only way to intercept it would be redirecting the process's stderr file
+    descriptor around every parse — process-global, unsafe with threads, and it
+    would swallow logging this library was never asked to touch. Quietly muting
+    a caller's error stream is a worse problem than the noise, so this library
+    does not do it.
+
+    Removing the panic needs an upstream change: see issue 4 in
+    `UPSTREAM_ISSUES.md`. The diagnostic fields above exist because that panic
+    is also where upstream's error information ends up.
