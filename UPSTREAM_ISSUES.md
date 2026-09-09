@@ -1,6 +1,6 @@
 # Upstream issues to file
 
-Three gaps found while building these bindings. Both belong upstream rather than
+Four gaps found while building these bindings. Both belong upstream rather than
 here, because working around either locally would mean patching the vendored
 crate — which would break the guarantee that what this package exposes is
 exactly what upstream supports.
@@ -198,3 +198,77 @@ with `--config profile.release.strip=false`. Verified in CI on Linux and macOS.
 > — but that belongs in `mozilla/uniffi-rs`.
 >
 > **Versions:** `cooklang-bindings` 0.18.7, uniffi 0.28.3, cargo 1.98.1.
+
+
+---
+
+## 4. cooklang-rs bindings: `parse_recipe` panics on a parse error and discards the diagnostic
+
+**Where:** `cooklang/cooklang-rs`.
+
+**Status in this project:** partially worked around. The panic surfaces as
+`CooklangError`, and `src/cooklang/parser.py` recovers the diagnostic by parsing
+the panic text. The stderr noise cannot be worked around from the consumer side.
+
+> ### `parse_recipe` unwraps the parse result, panicking instead of returning the error
+>
+> **Summary**
+>
+> `bindings/src/lib.rs:25`:
+>
+> ```rust
+> let (mut parsed, _warnings) = parser.parse(&input).into_result().unwrap();
+> ```
+>
+> Any input the parser refuses panics. Two known triggers:
+>
+> ```
+> Cook the @beef{1%lb} in a #{} now.   -> Invalid cookware name: is empty
+> Wait for ~{}.                        -> Invalid timer: neither quantity nor name
+> ```
+>
+> **Two consequences, the second worse than the first**
+>
+> UniFFI converts the panic into a foreign exception, so a caller with
+> `try/except` survives. But Rust's panic handler has already written to stderr
+> by then, so a batch job over user-supplied recipes prints panic traces that
+> look like the process died. A user of the Python bindings hit this while
+> processing 51 recipes; the run completed, but the console said otherwise.
+>
+> More importantly, the diagnostic is thrown away. `SourceReport` carries
+> severity, stage, a human message and a byte span pointing at the offending
+> position — everything a caller needs to report the problem. `unwrap()`
+> formats all of it into a panic string, so the only way to recover it is to
+> parse that string back, which is what these Python bindings now do:
+>
+> ```python
+> error.message   # 'Invalid cookware name: is empty'
+> error.span      # (23, 23)
+> error.label     # 'add a name here'
+> ```
+>
+> That works but is obviously the wrong layer for it. For an editor rendering a
+> live preview of half-typed input, the diagnostic *is* the feature.
+>
+> **Suggested fix**
+>
+> Return the error rather than panicking. Since `parse_recipe` currently has an
+> infallible signature, that means either a `Result` return with a UniFFI error
+> enum carrying the diagnostic fields — `ShoppingListError` in the same crate is
+> the existing precedent — or a new fallible entry point alongside it if the
+> current signature must stay.
+>
+> **The same shape appears elsewhere.** These also panic rather than returning,
+> on an out-of-range index:
+>
+> * `lib.rs:44,47,50` — `deref_component`
+> * `lib.rs:66,79,92` — `deref_ingredient`, `deref_cookware`, `deref_timer`
+> * `model.rs:383` — `expand_with_ingredients`, reached from
+>   `combine_ingredients_selected`
+> * `model.rs:439-467` — `panic!("Unexpected type")` in `add_to_ingredient_list`
+>   when a `GroupedQuantityKey`'s `unit_type` disagrees with its `Value` variant
+>
+> Nobody has hit those because callers pass indices that came from the same
+> recipe, but they are reachable from any binding with a wrong index.
+>
+> **Versions:** `cooklang-bindings` 0.18.7, uniffi 0.28.3.

@@ -404,23 +404,45 @@ True
 
 ```
 
-The one input known to trigger it is a timer with neither a duration nor a
-name, which upstream refuses outright rather than reading as text:
+Two inputs are known to trigger it: a timer with neither a duration nor a name
+(`~{}`), and cookware with no name (`#{}`). Both are refused outright rather
+than read as text.
+
+The error carries upstream's own diagnostic, so you can point at the problem
+rather than reporting a failure:
 
 ```pycon
+>>> source = "Cook @beef{1%lb} in a #{} now."
 >>> try:
-...     cooklang.parse("Wait for ~{}.")
-... except cooklang.CooklangError as exc:
-...     print("Invalid timer" in str(exc))
-True
+...     cooklang.parse(source)
+... except cooklang.CooklangError as error:
+...     print(error.message)
+...     print(error.label, error.span)
+...     print(source)
+...     print(" " * error.span[0] + "^")
+Invalid cookware name: is empty
+add a name here (23, 23)
+Cook @beef{1%lb} in a #{} now.
+                       ^
 
 ```
+
+`span` is a pair of byte offsets into the input you passed, which is what lets
+an editor underline the offending text. `severity` and `stage` carry upstream's
+classification, and `raw` holds the original message in case the rest could not
+be recovered — every field is `None` rather than a guess when it is unavailable.
 
 Worth catching on ingest if you accept recipes you did not write.
 
 !!! note "Upstream prints a panic message to stderr"
 
-    Upstream signals this failure by panicking, and Rust's panic handler
-    writes to stderr before the error crosses the FFI boundary. The exception
-    is raised and catchable as shown above, but the message appears in your
-    logs regardless — it is noise, not an unhandled crash.
+    Upstream signals these failures by panicking rather than returning an
+    error, and Rust's panic handler writes to stderr before the error crosses
+    the FFI boundary. The exception is raised and catchable as shown above, but
+    the panic text appears in your logs regardless — it is noise, not an
+    unhandled crash, and a batch job that logs it has not died.
+
+    The diagnostic fields above exist because that panic is also where
+    upstream's own error information ends up; they recover it from the panic
+    text. Removing the panic entirely needs an upstream change — see
+    `UPSTREAM_ISSUES.md` in the repository.

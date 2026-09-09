@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING, Any, Sequence
 
 from ._ffi import ffi
@@ -30,13 +31,72 @@ if TYPE_CHECKING:  # pragma: no cover
     from .aisle import AisleConfig
 
 
+# Upstream signals a parse failure by panicking, and the diagnostic it built is
+# formatted into the panic message rather than returned. These recover it. The
+# shape is a Rust Debug of `SourceReport`; upstream is pinned, and the tests
+# assert the extraction against real messages, so a format change fails loudly
+# rather than silently degrading.
+_DIAG_MESSAGE = re.compile(r'message: "((?:[^"\\]|\\.)*)"')
+_DIAG_SEVERITY = re.compile(r"severity: (\w+)")
+_DIAG_STAGE = re.compile(r"stage: (\w+)")
+_DIAG_SPAN = re.compile(r"labels: \[\((\d+)\.\.(\d+)")
+_DIAG_LABEL = re.compile(r'labels: \[\(\d+\.\.\d+, Some\("((?:[^"\\]|\\.)*)"\)')
+
+
 class CooklangError(ValueError):
     """Raised when the upstream parser cannot parse the input at all.
 
     Cooklang is a forgiving format and almost any text is a valid recipe, so
-    this is rare. Malformed metadata or unclosed markup does not raise; it
-    parses to whatever upstream decides it means.
+    this is rare -- malformed metadata and unclosed markup parse to whatever
+    upstream decides they mean. A genuine refusal looks like
+    ``#{}`` (cookware with no name) or ``~{}`` (a timer with neither).
+
+    Upstream reports these by panicking, which discards its own diagnostic into
+    a panic string. The attributes below recover what it had built, so a caller
+    can point at the problem instead of showing a Rust panic. Each is ``None``
+    if it could not be recovered; :attr:`raw` always holds the original.
+
+    Attributes:
+        message: The human-readable problem, e.g. ``"Invalid cookware name: is
+            empty"``.
+        severity: Upstream's severity, e.g. ``"Error"``.
+        stage: Which stage failed, e.g. ``"Parse"``.
+        span: ``(start, end)`` byte offsets into the input the problem sits at.
+            Both ends are equal where upstream points at a position rather than
+            a range.
+        label: Upstream's note about that position, e.g. ``"add a name here"``.
+        raw: The unparsed panic text.
     """
+
+    def __init__(self, raw: str) -> None:
+        self.raw = raw
+        message = _DIAG_MESSAGE.search(raw)
+        severity = _DIAG_SEVERITY.search(raw)
+        stage = _DIAG_STAGE.search(raw)
+        span = _DIAG_SPAN.search(raw)
+        label = _DIAG_LABEL.search(raw)
+
+        self.message: str | None = message.group(1) if message else None
+        self.severity: str | None = severity.group(1) if severity else None
+        self.stage: str | None = stage.group(1) if stage else None
+        self.span: tuple[int, int] | None = (
+            (int(span.group(1)), int(span.group(2))) if span else None
+        )
+        self.label: str | None = label.group(1) if label else None
+
+        super().__init__(self._summary())
+
+    def _summary(self) -> str:
+        """A readable message, falling back to the raw panic text."""
+        if self.message is None:
+            return self.raw
+        parts = [self.message]
+        if self.label:
+            parts.append(f"({self.label})")
+        if self.span:
+            start, end = self.span
+            parts.append(f"at {start}" if start == end else f"at {start}..{end}")
+        return " ".join(parts)
 
 
 # Standard metadata keys, exposed under Python-friendly names.
