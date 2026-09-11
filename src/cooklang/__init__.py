@@ -17,6 +17,7 @@ from __future__ import annotations
 from . import contrib
 from .aisle import AisleCategory, AisleConfig, AisleIngredient, parse_aisle_config
 from .models import (
+    Block,
     Cookware,
     CookwareRef,
     Ingredient,
@@ -68,6 +69,7 @@ __all__ = [
     "TimerRef",
     "Item",
     "Note",
+    "Block",
     "Ingredient",
     "Cookware",
     "Timer",
@@ -95,8 +97,8 @@ __all__ = [
     # Value helpers
     "parse_value",
     "format_value",
-    # Metadata
-    "__version__",
+    # Metadata. `__version__` is importable too, but dunder names stay out of
+    # `__all__` so `from cooklang import *` does not export it.
     "UPSTREAM_VERSION",
 ]
 

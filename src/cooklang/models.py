@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Iterator, Mapping
 from dataclasses import dataclass, field
+from datetime import timedelta
 
 __all__ = [
     "Range",
@@ -24,6 +25,7 @@ __all__ = [
     "TimerRef",
     "Item",
     "Note",
+    "Block",
     "Section",
     "Recipe",
 ]
@@ -87,11 +89,39 @@ class RecipeTime:
     Cooklang accepts either a single total (``time: 45``) or a prep/cook split
     (``prep time:`` and ``cook time:``). Both shapes land here: ``total`` is
     the number the recipe gave, or the sum of the split when it gave one.
+
+    The fields are ``int`` minutes because that is what upstream reports. The
+    ``*_duration`` properties give the same values as
+    :class:`~datetime.timedelta`, the type
+    :func:`cooklang.contrib.timer_duration` returns, so recipe time and timer
+    time can be added without unit conversion.
+
+    Example:
+        >>> from cooklang import RecipeTime
+        >>> RecipeTime(total=45, prep=15, cook=30).total_duration
+        datetime.timedelta(seconds=2700)
+        >>> RecipeTime(total=45).prep_duration is None
+        True
     """
 
     total: int | None = None
     prep: int | None = None
     cook: int | None = None
+
+    @property
+    def total_duration(self) -> timedelta | None:
+        """:attr:`total` as a :class:`~datetime.timedelta`, or ``None``."""
+        return None if self.total is None else timedelta(minutes=self.total)
+
+    @property
+    def prep_duration(self) -> timedelta | None:
+        """:attr:`prep` as a :class:`~datetime.timedelta`, or ``None``."""
+        return None if self.prep is None else timedelta(minutes=self.prep)
+
+    @property
+    def cook_duration(self) -> timedelta | None:
+        """:attr:`cook` as a :class:`~datetime.timedelta`, or ``None``."""
+        return None if self.cook is None else timedelta(minutes=self.cook)
 
     def __str__(self) -> str:
         return f"{self.total} minutes" if self.total is not None else ""
@@ -230,16 +260,24 @@ class Note:
         return self.text
 
 
+Block = Step | Note
+"""One block of a section: a step, or a note between steps."""
+
+
 @dataclass(frozen=True, slots=True)
 class Section:
     """A ``== Section ==`` heading and the blocks beneath it.
 
     ``name`` is ``None`` for content that appears before any heading, which is
     the only section present in a recipe that uses no headings at all.
+
+    :attr:`steps` and :attr:`notes` filter :attr:`blocks` on each access. That
+    costs nothing at recipe sizes, but in a hot loop take the tuple once rather
+    than indexing ``section.steps[i]`` repeatedly.
     """
 
     name: str | None
-    blocks: tuple[Step | Note, ...] = ()
+    blocks: tuple[Block, ...] = ()
 
     @property
     def steps(self) -> tuple[Step, ...]:

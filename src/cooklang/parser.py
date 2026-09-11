@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from typing import TYPE_CHECKING, Any
 
 from ._ffi import ffi
@@ -11,6 +11,7 @@ from ._validate import require_index, require_number, require_str
 from .errors import CooklangError
 from .models import (
     _Metadata,
+    Block,
     Cookware,
     CookwareRef,
     Ingredient,
@@ -293,7 +294,7 @@ def parse(text: str, *, scale: float = 1.0) -> Recipe:
     sections: list[Section] = []
     step_number = 0
     for raw_section in raw.sections():
-        blocks: list[Step | Note] = []
+        blocks: list[Block] = []
         for block in raw_section.blocks:
             if isinstance(block, ffi.Block.NOTE_BLOCK):
                 blocks.append(Note(text=block[0].text.strip()))
@@ -381,8 +382,8 @@ def _to_ffi_ingredients(ingredients: Sequence[Ingredient]) -> list[Any]:
 def combine_ingredients(
     ingredients: Sequence[Ingredient],
     *,
-    indices: Sequence[int] | None = None,
-    aisle: "AisleConfig | None" = None,
+    indices: Iterable[int] | None = None,
+    aisle: AisleConfig | None = None,
 ) -> dict[str, tuple[Quantity, ...]]:
     """Total up repeated ingredients, letting upstream do the unit arithmetic.
 
@@ -392,8 +393,10 @@ def combine_ingredients(
 
     Args:
         ingredients: The ingredients to total.
-        indices: Positions to include, for totalling a subset — the steps a
-            user ticked, say. ``None`` (the default) uses all of them.
+        indices: Positions in ``ingredients`` to include, for totalling a
+            subset -- the ingredients of the steps a user ticked, say. Read
+            once, so any iterable of ints works. ``None`` (the default) uses
+            all of them.
         aisle: An :class:`~cooklang.aisle.AisleConfig`. When given,
             ingredient names are resolved to their common names *before*
             totalling, so ``@onions{1}`` and ``@brown onion{2}`` combine into
