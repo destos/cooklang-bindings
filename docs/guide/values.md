@@ -68,7 +68,7 @@ Non-string input is rejected:
 >>> cooklang.parse_value(1.5)
 Traceback (most recent call last):
     ...
-TypeError: expected str, got float
+TypeError: text must be str, not float
 
 ```
 

@@ -190,6 +190,6 @@ Non-string input is rejected the same way `parse` rejects it:
 >>> cooklang.parse_aisle_config(None)
 Traceback (most recent call last):
     ...
-TypeError: expected str, got NoneType
+TypeError: text must be str, not NoneType
 
 ```

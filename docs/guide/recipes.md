@@ -394,13 +394,39 @@ upstream decides they mean.
 
 ```
 
-[`CooklangError`][cooklang.parser.CooklangError] covers an outright parser
-failure, which is rare. It subclasses `ValueError`, so
-`except ValueError` catches it.
+[`ParseError`][cooklang.parser.ParseError] covers an outright parser failure,
+which is rare. It is one branch of a small hierarchy, so you can catch as
+narrowly or as broadly as you need:
+
+```text
+ValueError
+└── CooklangError        every error the package raises about its input
+    ├── ParseError       parse() could not read the recipe
+    └── ShoppingListError
+```
+
+[`CooklangError`][cooklang.errors.CooklangError] is the one to catch if you want
+everything this package can reject, and since it subclasses `ValueError`,
+existing `except ValueError` handlers keep working.
 
 ```pycon
+>>> issubclass(cooklang.ParseError, cooklang.CooklangError)
+True
 >>> issubclass(cooklang.CooklangError, ValueError)
 True
+
+```
+
+A wrong argument *type* is deliberately not in that hierarchy. `parse(None)` or
+`parse("x", scale="2")` is a bug in the calling code, not a bad recipe, so it
+raises a plain `TypeError` that an `except CooklangError` written for bad input
+will not swallow:
+
+```pycon
+>>> cooklang.parse("Mix.", scale="2")
+Traceback (most recent call last):
+    ...
+TypeError: scale must be a number, not str
 
 ```
 
@@ -415,7 +441,7 @@ rather than reporting a failure:
 >>> source = "Cook @beef{1%lb} in a #{} now."
 >>> try:
 ...     cooklang.parse(source)
-... except cooklang.CooklangError as error:
+... except cooklang.ParseError as error:
 ...     print(error.message)
 ...     print(error.label, error.span)
 ...     print(source)
@@ -431,6 +457,16 @@ Cook @beef{1%lb} in a #{} now.
 an editor underline the offending text. `severity` and `stage` carry upstream's
 classification, and `raw` holds the original message in case the rest could not
 be recovered — every field is `None` rather than a guess when it is unavailable.
+
+Every field is also a keyword argument, so a test can build the error it
+expects without provoking a panic. `raw` is `None` for one built this way:
+
+```pycon
+>>> error = cooklang.ParseError("Invalid cookware name: is empty", span=(23, 23))
+>>> error.span, error.raw
+((23, 23), None)
+
+```
 
 Worth catching on ingest if you accept recipes you did not write.
 

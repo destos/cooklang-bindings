@@ -143,6 +143,15 @@ cross-reference links at build time, and falls back to plain inline code for
 anything it cannot resolve — so a role pointing at something undocumented will
 not break the `--strict` build, but it will not become a link either.
 
+### The style guide
+
+[`STYLEGUIDE.md`](https://github.com/destos/cooklang-bindings/blob/main/STYLEGUIDE.md)
+at the repository root is the contract for code under `src/cooklang/`: naming,
+what may appear in a public signature, how wrong types and bad input are raised,
+and how docstrings are written. It lives outside `docs/` because it governs the
+code rather than describing the API. Work through its section 10 checklist
+before opening a PR.
+
 ## Moving to a new upstream release
 
 1. Bump the `vendor/cooklang-rs` submodule to the new tag.

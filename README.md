@@ -16,7 +16,7 @@ recipe = cooklang.parse(source)
 
 recipe.title                      # "Sourdough"
 recipe.servings                   # 4
-recipe.metadata                   # {"title": "Sourdough", "servings": 4, ...}
+recipe.metadata                   # {'title': 'Sourdough', 'servings': 4, ...} (read-only)
 recipe.method                     # ("Mix flour.", "Rest it for 12 hours.")
 recipe.sections[0].name           # "Prep"
 recipe.notes[0].text              # "Use a warm room."
@@ -109,7 +109,7 @@ every quantity, so `scale=2.0` doubles the recipe.
 | `title`, `description` | `str \| None` | from metadata |
 | `servings` | `int \| str \| None` | `int` when the recipe gave a number |
 | `tags` | `tuple[str, ...]` | |
-| `metadata` | `Mapping[str, Any]` | standard keys under Python names (`prep_time`), custom keys verbatim |
+| `metadata` | `Mapping[str, str \| int \| tuple[str, ...]]` | read-only; standard keys under Python names (`prep_time`), custom keys verbatim; lists such as `tags` are tuples |
 | `sections` | `tuple[Section, ...]` | one unnamed section for content before any heading |
 | `steps`, `notes` | `tuple[Step, ...]` / `tuple[Note, ...]` | flattened across sections |
 | `method` | `tuple[str, ...]` | just the step text |
@@ -253,8 +253,16 @@ the model types are also ours rather than upstream's — see
 
 Cooklang is forgiving and nearly any text is a valid recipe: malformed metadata
 and unclosed markup parse to whatever upstream decides they mean rather than
-raising. `CooklangError` covers an outright parser failure; `parse` raises
-`TypeError` for non-`str` input.
+raising. `ParseError` covers an outright parser failure, and
+`ShoppingListError` a shopping list that cannot be read. Both subclass
+`CooklangError`, the base for every error the package raises about its input,
+which in turn subclasses `ValueError` — so `except cooklang.CooklangError`
+catches either.
+
+A wrong argument type is a bug in the caller rather than bad input, so it raises
+a plain `TypeError` (`text must be str, not NoneType`) and is deliberately not a
+`CooklangError`. `parse(scale=...)` takes an `int`, `float`, `Fraction` or
+`Decimal`; `scale="2"` and `scale=True` are rejected rather than coerced.
 
 ## Tests
 

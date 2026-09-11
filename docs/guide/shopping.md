@@ -108,9 +108,13 @@ cooklang.shopping.ShoppingListError: reason='Invalid indentation at line'
 
 ```
 
-It subclasses `ValueError`:
+It is a [`CooklangError`][cooklang.errors.CooklangError], the base for every
+error this package raises about its input, and so also a `ValueError`. One
+`except cooklang.CooklangError` covers a bad recipe and a bad list alike:
 
 ```pycon
+>>> issubclass(cooklang.ShoppingListError, cooklang.CooklangError)
+True
 >>> issubclass(cooklang.ShoppingListError, ValueError)
 True
 

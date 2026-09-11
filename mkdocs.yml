@@ -64,6 +64,7 @@ nav:
       - api/aisle.md
       - api/shopping.md
       - api/values.md
+      - api/errors.md
   - Contributing: contributing.md
 
 markdown_extensions:
