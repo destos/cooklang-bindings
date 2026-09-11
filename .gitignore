@@ -18,5 +18,5 @@ target/
 /.cargo-container/
 /.rustup-container/
 
-# Local Claude Code settings, never published.
-.claude/
+# Personal Claude Code settings stay local; the shared settings.json is committed.
+.claude/settings.local.json
