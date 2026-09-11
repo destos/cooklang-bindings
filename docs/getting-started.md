@@ -177,10 +177,10 @@ A `> note` line is a [`Note`][cooklang.models.Note], never a numbered step:
 
 ```
 
-Iterating a section yields its blocks in document order, notes included:
+A section's `blocks` holds steps and notes together in document order:
 
 ```pycon
->>> [type(block).__name__ for block in recipe.sections[0]]
+>>> [type(block).__name__ for block in recipe.sections[0].blocks]
 ['Step', 'Note']
 
 ```
@@ -227,7 +227,7 @@ Because the model is plain data, printing it is unremarkable:
 Sourdough
 >>> for section in recipe.sections:
 ...     print(f"## {section}")
-...     for block in section:
+...     for block in section.blocks:
 ...         if isinstance(block, cooklang.Step):
 ...             print(f"{block.number}. {block.text}")
 ...         else:

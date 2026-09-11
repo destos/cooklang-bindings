@@ -199,10 +199,10 @@ class TestModelTypes:
         for obj in (*recipe.ingredients, *recipe.cookware, *recipe.timers, *recipe.steps):
             assert type(obj).__module__.startswith("cooklang")
 
-    def test_section_iteration_yields_blocks_in_order(self):
+    def test_section_blocks_keep_document_order(self):
         recipe = cooklang.parse("One.\n\n> A note.\n\nTwo.\n")
 
-        kinds = [type(b).__name__ for b in recipe.sections[0]]
+        kinds = [type(b).__name__ for b in recipe.sections[0].blocks]
         assert kinds == ["Step", "Note", "Step"]
 
     def test_recipe_str_is_the_title(self):

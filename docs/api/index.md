@@ -12,8 +12,8 @@ API, not to describe an import path you have to use.
 | [Parsing](parser.md) | `parse`, `combine_ingredients`, `ParseError` |
 | [Recipe model](models.md) | `Recipe`, `Section`, `Step`, `Note`, `Ingredient`, `Cookware`, `Timer`, `Quantity`, `Range`, `NameAndUrl`, `RecipeTime` |
 | [Aisle configuration](aisle.md) | `parse_aisle_config`, `AisleConfig`, `AisleCategory`, `AisleIngredient` |
-| [Shopping lists](shopping.md) | `parse_shopping_list`, `ShoppingList`, `RecipeItem`, `IngredientItem`, `ShoppingListError` |
-| [Checked log](shopping.md#the-checked-log) | `parse_checked_log`, `checked_names`, `compact_checked_log`, `CheckEntry`, `Checked`, `Unchecked` |
+| [Shopping lists](shopping.md) | `parse_shopping_list`, `ShoppingList`, `RecipeItem`, `IngredientItem`, `ShoppingItem`, `ShoppingListError` |
+| [Checked log](shopping.md#the-checked-log) | `parse_checked_log`, `checked_names`, `compact_checked_log`, `CheckEntry` |
 | [Value helpers](values.md) | `parse_value`, `format_value` |
 | [Errors](errors.md) | `CooklangError`, the base of `ParseError` and `ShoppingListError` |
 

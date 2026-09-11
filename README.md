@@ -181,8 +181,9 @@ it) and free-hand ingredients (`salt{1%tsp}`), nested by two-space indents:
 ```python
 shopping = cooklang.parse_shopping_list("./Breakfast/Pancakes{2}\nsalt{1%tsp}\n")
 shopping.recipes[0].path        # "Breakfast/Pancakes"  (the ./ is stripped)
-shopping.recipes[0].multiplier  # 2.0
+shopping.recipes[0].scale       # 2.0  (upstream's multiplier)
 shopping.ingredients[0].name    # "salt"
+str(shopping.ingredients[0])    # "salt (1 tsp)"  (display; to_text() gives "salt{1%tsp}\n")
 shopping.to_text()              # round-trips back to the file format
 ```
 
