@@ -249,9 +249,6 @@ class Section:
     def notes(self) -> tuple[Note, ...]:
         return tuple(b for b in self.blocks if isinstance(b, Note))
 
-    def __iter__(self) -> Iterator[Step | Note]:
-        return iter(self.blocks)
-
     def __str__(self) -> str:
         return self.name or ""
 
@@ -366,4 +363,5 @@ class Recipe:
         return tuple(step.text for step in self.steps)
 
     def __str__(self) -> str:
-        return self.title or "<untitled recipe>"
+        """The title, or ``""`` for an untitled recipe, like every other ``__str__``."""
+        return self.title or ""

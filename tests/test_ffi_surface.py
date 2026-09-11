@@ -57,7 +57,7 @@ _COVERAGE = {
     "parse_shopping_checked": "cooklang.parse_checked_log()",
     "shopping_checked_set": "cooklang.checked_names()",
     "compact_shopping_checked": "cooklang.compact_checked_log()",
-    "write_shopping_check_entry": "Checked.to_text() / Unchecked.to_text()",
+    "write_shopping_check_entry": "CheckEntry.to_text()",
 }
 
 
@@ -282,17 +282,18 @@ class TestShoppingList:
         assert [r.path for r in parsed.recipes] == ["Breakfast/Pancakes", "sauce"]
         assert [i.name for i in parsed.ingredients] == ["salt"]
 
-    def test_multiplier_is_read(self):
+    def test_upstreams_multiplier_is_read_as_scale(self):
         parsed = cooklang.parse_shopping_list(SHOPPING_LIST)
 
-        assert parsed.recipes[0].multiplier == 2
-        assert parsed.recipes[1].multiplier is None
+        assert parsed.recipes[0].scale == 2
+        assert parsed.recipes[1].scale is None
 
-    def test_len_and_iteration(self):
+    def test_items_keep_document_order(self):
         parsed = cooklang.parse_shopping_list(SHOPPING_LIST)
 
-        assert len(parsed) == 3
-        assert len(list(parsed)) == 3
+        assert [type(i).__name__ for i in parsed.items] == [
+            "RecipeItem", "IngredientItem", "RecipeItem",
+        ]
 
     def test_round_trips_through_to_text(self):
         parsed = cooklang.parse_shopping_list(SHOPPING_LIST)
@@ -304,8 +305,8 @@ class TestShoppingList:
     def test_a_hand_built_list_serializes(self):
         built = cooklang.ShoppingList(
             items=(
-                cooklang.RecipeItem(path="pasta", multiplier=2.0),
-                cooklang.IngredientItem(name="salt", quantity="1%tsp"),
+                cooklang.RecipeItem(path="pasta", scale=2.0),
+                cooklang.IngredientItem(name="salt", quantity_text="1%tsp"),
             )
         )
 
@@ -340,8 +341,8 @@ class TestCheckedLog:
         assert cooklang.checked_names(entries) == ("salt",)
 
     def test_entry_to_text(self):
-        assert cooklang.Checked(name="salt").to_text().strip() == "+ salt"
-        assert cooklang.Unchecked(name="salt").to_text().strip() == "- salt"
+        assert cooklang.CheckEntry("salt", checked=True).to_text().strip() == "+ salt"
+        assert cooklang.CheckEntry("salt", checked=False).to_text().strip() == "- salt"
 
     def test_compact_drops_stale_entries(self):
         entries = cooklang.parse_checked_log(CHECKED_LOG)

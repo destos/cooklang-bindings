@@ -3,7 +3,7 @@
 Two related file formats upstream parses:
 
 ``.shopping-list``
-    Recipe references (``./pasta`` with an optional multiplier) and free-hand
+    Recipe references (``./pasta`` with an optional scale) and free-hand
     ingredients, nested by indentation.
 
 ``.shopping-checked``
@@ -14,20 +14,20 @@ Two related file formats upstream parses:
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
-from typing import Any, Iterable, Sequence
+from typing import Any
 
 from ._ffi import ffi
 from ._validate import require_str
 from .errors import CooklangError
+from .models import _trim
 
 __all__ = [
     "ShoppingListError",
     "RecipeItem",
     "IngredientItem",
     "ShoppingList",
-    "Checked",
-    "Unchecked",
     "CheckEntry",
     "parse_shopping_list",
     "parse_checked_log",
@@ -47,15 +47,28 @@ class ShoppingListError(CooklangError):
 class IngredientItem:
     """A free-hand ingredient line, e.g. ``salt{1%tsp}``.
 
-    ``quantity`` is kept as the raw string the file gave, unparsed --
-    :func:`cooklang.parse_value` will read it if you need a number.
+    ``quantity_text`` is the raw amount the file gave, unparsed: ``"1%tsp"``
+    here. :func:`cooklang.parse_value` will read it if you need a number. The
+    name differs from :attr:`cooklang.models.Ingredient.quantity` on purpose:
+    that one is a parsed :class:`~cooklang.models.Quantity`, and this is text.
     """
 
     name: str
-    quantity: str | None = None
+    quantity_text: str | None = None
+
+    def to_text(self) -> str:
+        """Serialize to its ``.shopping-list`` line, newline included.
+
+        Raises:
+            ShoppingListError: If serialization fails.
+        """
+        return _write_items((self,))
 
     def __str__(self) -> str:
-        return f"{self.name}{{{self.quantity}}}" if self.quantity else self.name
+        """The name, with any amount in brackets: ``salt (1 tsp)``."""
+        if not self.quantity_text:
+            return self.name
+        return f"{self.name} ({self.quantity_text.replace('%', ' ')})"
 
 
 @dataclass(frozen=True, slots=True)
@@ -63,25 +76,43 @@ class RecipeItem:
     """A reference to another recipe, e.g. ``./Breakfast/Pancakes{2}``.
 
     ``path`` is stored without the leading ``./`` that marks the line as a
-    recipe reference in the file. ``multiplier`` scales that recipe.
+    recipe reference in the file. ``scale`` multiplies that recipe, as the
+    ``scale`` argument to :func:`cooklang.parse` does; upstream calls it the
+    multiplier.
     """
 
     path: str
-    multiplier: float | None = None
-    children: tuple["RecipeItem | IngredientItem", ...] = ()
+    scale: float | None = None
+    children: tuple[ShoppingItem, ...] = ()
+
+    def to_text(self) -> str:
+        """Serialize to its ``.shopping-list`` lines, children and newline included.
+
+        Raises:
+            ShoppingListError: If serialization fails.
+        """
+        return _write_items((self,))
 
     def __str__(self) -> str:
-        if self.multiplier is None:
-            return f"./{self.path}"
-        scale = int(self.multiplier) if float(self.multiplier).is_integer() else self.multiplier
-        return f"./{self.path}{{{scale}}}"
+        """The path, with any scale: ``Breakfast/Pancakes ×2``."""
+        if self.scale is None:
+            return self.path
+        return f"{self.path} ×{_trim(self.scale)}"
+
+
+ShoppingItem = RecipeItem | IngredientItem
+"""One line of a shopping list: a recipe reference or a free-hand ingredient."""
 
 
 @dataclass(frozen=True, slots=True)
 class ShoppingList:
-    """A parsed shopping list."""
+    """A parsed shopping list.
 
-    items: tuple[RecipeItem | IngredientItem, ...] = ()
+    Iterate :attr:`items` for the lines in document order, or use
+    :attr:`recipes` and :attr:`ingredients` for one kind.
+    """
+
+    items: tuple[ShoppingItem, ...] = ()
 
     @property
     def recipes(self) -> tuple[RecipeItem, ...]:
@@ -97,86 +128,73 @@ class ShoppingList:
         Raises:
             ShoppingListError: If serialization fails.
         """
+        return _write_items(self.items)
+
+
+@dataclass(frozen=True, slots=True)
+class CheckEntry:
+    """One line of a ``.shopping-checked`` log.
+
+    ``checked`` is ``True`` for a ``+ name`` line, an ingredient picked up, and
+    ``False`` for ``- name``, one put back. It is keyword-only, so a call site
+    reads ``CheckEntry("milk", checked=False)`` rather than a bare ``False``.
+    """
+
+    name: str
+    checked: bool = field(kw_only=True)
+
+    def to_text(self) -> str:
+        """Serialize to its log line, newline included: ``+ milk``.
+
+        Raises:
+            ShoppingListError: If serialization fails.
+        """
         try:
-            return ffi.write_shopping_list(ffi.ShoppingList(items=[_to_ffi_item(i) for i in self.items]))
+            return ffi.write_shopping_check_entry(_to_ffi_entry(self))
         except ffi.ShoppingListError as exc:
             raise ShoppingListError(str(exc)) from exc
 
-    def __iter__(self):
-        return iter(self.items)
-
-    def __len__(self) -> int:
-        return len(self.items)
-
-
-@dataclass(frozen=True, slots=True)
-class Checked:
-    """A log entry recording that an ingredient was picked up."""
-
-    name: str
-    checked: bool = field(default=True, init=False)
-
-    def to_text(self) -> str:
-        return _write_entry(self)
-
     def __str__(self) -> str:
         return self.name
 
 
-@dataclass(frozen=True, slots=True)
-class Unchecked:
-    """A log entry recording that an ingredient was put back."""
-
-    name: str
-    checked: bool = field(default=False, init=False)
-
-    def to_text(self) -> str:
-        return _write_entry(self)
-
-    def __str__(self) -> str:
-        return self.name
-
-
-CheckEntry = Checked | Unchecked
-
-
-def _from_ffi_item(item: Any) -> RecipeItem | IngredientItem:
+def _from_ffi_item(item: Any) -> ShoppingItem:
+    """Convert an FFI item. Upstream's ``multiplier`` becomes ``scale``, and its
+    ``quantity`` becomes ``quantity_text``."""
     if isinstance(item, ffi.ShoppingListItem.RECIPE):
         return RecipeItem(
             path=item.path,
-            multiplier=item.multiplier,
+            scale=item.multiplier,
             children=tuple(_from_ffi_item(c) for c in item.children),
         )
-    return IngredientItem(name=item.name, quantity=item.quantity)
+    return IngredientItem(name=item.name, quantity_text=item.quantity)
 
 
-def _to_ffi_item(item: RecipeItem | IngredientItem) -> Any:
+def _to_ffi_item(item: ShoppingItem) -> Any:
     if isinstance(item, RecipeItem):
         return ffi.ShoppingListItem.RECIPE(
             path=item.path,
-            multiplier=item.multiplier,
+            multiplier=item.scale,
             children=[_to_ffi_item(c) for c in item.children],
         )
-    return ffi.ShoppingListItem.INGREDIENT(name=item.name, quantity=item.quantity)
+    return ffi.ShoppingListItem.INGREDIENT(name=item.name, quantity=item.quantity_text)
+
+
+def _write_items(items: Iterable[ShoppingItem]) -> str:
+    try:
+        return ffi.write_shopping_list(ffi.ShoppingList(items=[_to_ffi_item(i) for i in items]))
+    except ffi.ShoppingListError as exc:
+        raise ShoppingListError(str(exc)) from exc
 
 
 def _from_ffi_entry(entry: Any) -> CheckEntry:
-    if isinstance(entry, ffi.CheckEntry.CHECKED):
-        return Checked(name=entry.name)
-    return Unchecked(name=entry.name)
+    return CheckEntry(name=entry.name, checked=isinstance(entry, ffi.CheckEntry.CHECKED))
 
 
 def _to_ffi_entry(entry: CheckEntry) -> Any:
-    if isinstance(entry, Checked):
+    if entry.checked:
         return ffi.CheckEntry.CHECKED(name=entry.name)
     return ffi.CheckEntry.UNCHECKED(name=entry.name)
-
-
-def _write_entry(entry: CheckEntry) -> str:
-    try:
-        return ffi.write_shopping_check_entry(_to_ffi_entry(entry))
-    except ffi.ShoppingListError as exc:
-        raise ShoppingListError(str(exc)) from exc
 
 
 def parse_shopping_list(text: str) -> ShoppingList:

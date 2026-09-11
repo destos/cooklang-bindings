@@ -38,12 +38,11 @@ from .errors import CooklangError
 from .parser import ParseError, combine_ingredients, parse
 from .shopping import (
     CheckEntry,
-    Checked,
     IngredientItem,
     RecipeItem,
+    ShoppingItem,
     ShoppingList,
     ShoppingListError,
-    Unchecked,
     checked_names,
     compact_checked_log,
     parse_checked_log,
@@ -86,14 +85,13 @@ __all__ = [
     "ShoppingList",
     "RecipeItem",
     "IngredientItem",
+    "ShoppingItem",
     "ShoppingListError",
     # Checked log
     "parse_checked_log",
     "checked_names",
     "compact_checked_log",
     "CheckEntry",
-    "Checked",
-    "Unchecked",
     # Value helpers
     "parse_value",
     "format_value",

@@ -23,6 +23,26 @@ pinned per release; see [NOTICE](NOTICE) for the relationship to cooklang-rs.
   `scale=True` are now errors rather than being read as numbers.
   `format_value(True)` and `format_value(b"x")` raise rather than rendering
   `"True"` and `"b'x'"`. `combine_ingredients(indices=...)` accepts only ints.
+- **`str()` is display text; `to_text()` is file syntax, for every type.**
+  `str(IngredientItem)` is now `salt (1 tsp)` and `str(RecipeItem)` is
+  `Breakfast/Pancakes ×2`; each gains a `to_text()` giving its file line, as
+  `str()` used to. `str()` of an untitled `Recipe` is `""` rather than
+  `<untitled recipe>`.
+- **Shopping-list fields renamed to this package's vocabulary.**
+  `IngredientItem.quantity` is now `quantity_text`, since it is raw text and
+  `Ingredient.quantity` is a parsed `Quantity`. `RecipeItem.multiplier` is now
+  `scale`, matching `parse(scale=...)`.
+- **`Checked` and `Unchecked` are one class.** Use
+  `CheckEntry(name, checked=True)`; the two old classes are gone, and
+  `CheckEntry` is no longer a type alias. `checked` is keyword-only.
+- **No half-implemented container protocols.** `Section` no longer iterates
+  and `ShoppingList` no longer iterates or has a length; use `section.blocks`
+  and `shopping.items`. A type with `__len__` but no `__getitem__` misleads
+  type checkers, and `reversed()` failed on it.
+
+### Added
+
+- `ShoppingItem`, the exported alias for `RecipeItem | IngredientItem`.
 
 ## 0.5.0 — 2026-09-11
 
