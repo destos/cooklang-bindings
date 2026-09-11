@@ -3,7 +3,7 @@
 Notable changes to `cooklang-bindings`. The upstream parser it binds to is
 pinned per release; see [NOTICE](NOTICE) for the relationship to cooklang-rs.
 
-## 0.5.0 — unreleased
+## 0.5.0 — 2026-09-11
 
 ### Parse errors carry upstream's diagnostic
 
