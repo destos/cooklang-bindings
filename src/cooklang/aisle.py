@@ -22,6 +22,7 @@ from dataclasses import dataclass
 from typing import Any, Iterable, Mapping
 
 from ._ffi import ffi
+from ._validate import require_str
 from .models import Range
 
 __all__ = ["AisleIngredient", "AisleCategory", "AisleConfig", "parse_aisle_config"]
@@ -83,7 +84,7 @@ class AisleConfig:
         This lookup is case sensitive and matches the config verbatim, unlike
         :meth:`common_name_for`.
         """
-        return self._conf.category_for(ingredient_name)
+        return self._conf.category_for(require_str("ingredient_name", ingredient_name))
 
     def common_name_for(self, ingredient_name: str) -> str:
         """The canonical name for an ingredient, or the name itself if unlisted.
@@ -93,7 +94,7 @@ class AisleConfig:
         config that groups them. Never returns ``None``: an unknown ingredient
         is returned unchanged, which makes this safe to apply to a whole list.
         """
-        return self._conf.common_name_for(ingredient_name)
+        return self._conf.common_name_for(require_str("ingredient_name", ingredient_name))
 
     def group_by_category(self, names: Iterable[str]) -> dict[str | None, tuple[str, ...]]:
         """Bucket ingredient names by category, for laying out a shopping list.
@@ -165,6 +166,5 @@ def parse_aisle_config(text: str) -> AisleConfig:
     Raises:
         TypeError: If ``text`` is not a ``str``.
     """
-    if not isinstance(text, str):
-        raise TypeError(f"expected str, got {type(text).__name__}")
+    require_str("text", text)
     return AisleConfig(ffi.parse_aisle_config(text))

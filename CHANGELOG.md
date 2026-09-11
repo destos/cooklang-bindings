@@ -3,6 +3,27 @@
 Notable changes to `cooklang-bindings`. The upstream parser it binds to is
 pinned per release; see [NOTICE](NOTICE) for the relationship to cooklang-rs.
 
+## 0.6.0 — unreleased
+
+### Changed
+
+- **Every error shares one base.** `CooklangError` is now the base class for
+  everything the package raises about its input, and `parse()` raises the new
+  `ParseError`, which carries the same `message`, `span` and other attributes
+  `CooklangError` used to. `ShoppingListError` derives from `CooklangError`
+  too. `except cooklang.CooklangError` and `except ValueError` both still catch
+  a failed parse. `ParseError` can be built from keyword arguments,
+  `ParseError("bad", span=(3, 5))`, with `raw` optional.
+- **`Recipe` hashes, as the README always said.** `Recipe.metadata` is now a
+  read-only mapping and `metadata["tags"]` is a tuple rather than a list, so a
+  recipe hashes and pickles by value. `dict(recipe.metadata)` gives a mutable
+  copy.
+- **Wrong types fail the same way everywhere.** Every entry point raises
+  `TypeError: <argument> must be <type>, not <type>`. `parse(scale="2")` and
+  `scale=True` are now errors rather than being read as numbers.
+  `format_value(True)` and `format_value(b"x")` raise rather than rendering
+  `"True"` and `"b'x'"`. `combine_ingredients(indices=...)` accepts only ints.
+
 ## 0.5.0 — 2026-09-11
 
 ### Parse errors carry upstream's diagnostic

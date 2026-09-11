@@ -3,10 +3,14 @@
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING, Any, Sequence
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Any
 
 from ._ffi import ffi
+from ._validate import require_index, require_number, require_str
+from .errors import CooklangError
 from .models import (
+    _Metadata,
     Cookware,
     CookwareRef,
     Ingredient,
@@ -25,7 +29,7 @@ from .models import (
     TimerRef,
 )
 
-__all__ = ["parse", "combine_ingredients", "CooklangError"]
+__all__ = ["parse", "combine_ingredients", "ParseError"]
 
 if TYPE_CHECKING:  # pragma: no cover
     from .aisle import AisleConfig
@@ -43,7 +47,7 @@ _DIAG_SPAN = re.compile(r"labels: \[\((\d+)\.\.(\d+)")
 _DIAG_LABEL = re.compile(r'labels: \[\(\d+\.\.\d+, Some\("((?:[^"\\]|\\.)*)"\)')
 
 
-class CooklangError(ValueError):
+class ParseError(CooklangError):
     """Raised when the upstream parser cannot parse the input at all.
 
     Cooklang is a forgiving format and almost any text is a valid recipe, so
@@ -54,7 +58,12 @@ class CooklangError(ValueError):
     Upstream reports these by panicking, which discards its own diagnostic into
     a panic string. The attributes below recover what it had built, so a caller
     can point at the problem instead of showing a Rust panic. Each is ``None``
-    if it could not be recovered; :attr:`raw` always holds the original.
+    if it could not be recovered; :attr:`raw` holds the original.
+
+    It is a :class:`~cooklang.errors.CooklangError`, and so a ``ValueError``.
+
+    Every attribute is also a keyword argument, so tests and callers can build
+    one without a panic string: ``ParseError("bad", span=(3, 5))``.
 
     Attributes:
         message: The human-readable problem, e.g. ``"Invalid cookware name: is
@@ -65,31 +74,48 @@ class CooklangError(ValueError):
             Both ends are equal where upstream points at a position rather than
             a range.
         label: Upstream's note about that position, e.g. ``"add a name here"``.
-        raw: The unparsed panic text.
+        raw: The unparsed panic text, or ``None`` for an error built by hand.
     """
 
-    def __init__(self, raw: str) -> None:
+    def __init__(
+        self,
+        message: str | None = None,
+        *,
+        severity: str | None = None,
+        stage: str | None = None,
+        span: tuple[int, int] | None = None,
+        label: str | None = None,
+        raw: str | None = None,
+    ) -> None:
+        self.message = message
+        self.severity = severity
+        self.stage = stage
+        self.span = span
+        self.label = label
         self.raw = raw
+        super().__init__(self._summary())
+
+    @classmethod
+    def _from_panic(cls, raw: str) -> ParseError:
+        """Build one from upstream's panic text, recovering what it can."""
         message = _DIAG_MESSAGE.search(raw)
         severity = _DIAG_SEVERITY.search(raw)
         stage = _DIAG_STAGE.search(raw)
         span = _DIAG_SPAN.search(raw)
         label = _DIAG_LABEL.search(raw)
-
-        self.message: str | None = message.group(1) if message else None
-        self.severity: str | None = severity.group(1) if severity else None
-        self.stage: str | None = stage.group(1) if stage else None
-        self.span: tuple[int, int] | None = (
-            (int(span.group(1)), int(span.group(2))) if span else None
+        return cls(
+            message.group(1) if message else None,
+            severity=severity.group(1) if severity else None,
+            stage=stage.group(1) if stage else None,
+            span=(int(span.group(1)), int(span.group(2))) if span else None,
+            label=label.group(1) if label else None,
+            raw=raw,
         )
-        self.label: str | None = label.group(1) if label else None
-
-        super().__init__(self._summary())
 
     def _summary(self) -> str:
         """A readable message, falling back to the raw panic text."""
         if self.message is None:
-            return self.raw
+            return self.raw or ""
         parts = [self.message]
         if self.label:
             parts.append(f"({self.label})")
@@ -183,7 +209,7 @@ def _recipe_time(raw: Any) -> RecipeTime | None:
     return RecipeTime(total=total, prep=prep, cook=cook)
 
 
-def _metadata(recipe: Any) -> dict[str, Any]:
+def _metadata(recipe: Any) -> _Metadata:
     metadata: dict[str, Any] = {}
 
     for name, key in _STD_KEYS.items():
@@ -193,7 +219,7 @@ def _metadata(recipe: Any) -> dict[str, Any]:
 
     tags = ffi.metadata_tags(recipe)
     if tags:
-        metadata["tags"] = list(tags)
+        metadata["tags"] = tuple(tags)
 
     servings = ffi.metadata_servings(recipe)
     if isinstance(servings, ffi.Servings.NUMBER):
@@ -206,7 +232,7 @@ def _metadata(recipe: Any) -> dict[str, Any]:
         if value is not None:
             metadata.setdefault(key, value)
 
-    return metadata
+    return _Metadata(metadata)
 
 
 def _items(
@@ -249,16 +275,16 @@ def parse(text: str, *, scale: float = 1.0) -> Recipe:
         scale: Factor applied to every quantity. ``2.0`` doubles the recipe.
 
     Raises:
-        CooklangError: If the upstream parser fails outright.
-        TypeError: If ``text`` is not a ``str``.
+        ParseError: If the upstream parser fails outright.
+        TypeError: If ``text`` is not a ``str``, or ``scale`` is not a number.
     """
-    if not isinstance(text, str):
-        raise TypeError(f"expected str, got {type(text).__name__}")
+    require_str("text", text)
+    factor = require_number("scale", scale)
 
     try:
-        raw = ffi.parse_recipe(text, float(scale))
+        raw = ffi.parse_recipe(text, factor)
     except ffi.InternalError as exc:
-        raise CooklangError(str(exc)) from exc
+        raise ParseError._from_panic(str(exc)) from exc
 
     ingredients = [_ingredient(i) for i in raw.ingredients()]
     cookware = [_cookware(c) for c in raw.cookware()]
@@ -304,8 +330,6 @@ def _to_ffi_value(value: int | float | str | Range | None) -> Any:
         return ffi.Value.EMPTY()
     if isinstance(value, Range):
         return ffi.Value.RANGE(start=float(value.start), end=float(value.end))
-    if isinstance(value, bool):
-        return ffi.Value.TEXT(value=str(value))
     if isinstance(value, (int, float)):
         return ffi.Value.NUMBER(value=float(value))
     return ffi.Value.TEXT(value=str(value))
@@ -380,13 +404,14 @@ def combine_ingredients(
 
     Raises:
         IndexError: If ``indices`` refers to a position that does not exist.
+        TypeError: If an entry in ``indices`` is not an ``int``.
     """
     raw_ingredients = _to_ffi_ingredients(ingredients)
 
     if indices is None:
         selected = list(range(len(raw_ingredients)))
     else:
-        selected = [int(i) for i in indices]
+        selected = [require_index("indices entry", i) for i in indices]
         for index in selected:
             if not 0 <= index < len(raw_ingredients):
                 raise IndexError(

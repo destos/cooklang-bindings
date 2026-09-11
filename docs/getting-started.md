@@ -34,7 +34,7 @@ Non-string input is the one thing that is rejected outright:
 >>> cooklang.parse(None)
 Traceback (most recent call last):
     ...
-TypeError: expected str, got NoneType
+TypeError: text must be str, not NoneType
 
 ```
 
@@ -85,6 +85,22 @@ through exactly as written.
 'patient'
 >>> sorted(recipe.metadata)
 ['author', 'mood', 'servings', 'source', 'tags', 'title']
+
+```
+
+`metadata` is read-only, like the rest of the recipe, and list values such as
+`tags` come back as tuples. That is what lets a `Recipe` be hashed, used as a
+dict key and pickled. `dict(recipe.metadata)` gives you a mutable copy:
+
+```pycon
+>>> recipe.metadata["tags"]
+('bread', 'slow')
+>>> recipe.metadata["mood"] = "rushed"
+Traceback (most recent call last):
+    ...
+TypeError: '_Metadata' object does not support item assignment
+>>> copy = dict(recipe.metadata)
+>>> copy["mood"] = "rushed"
 
 ```
 

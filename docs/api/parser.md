@@ -6,4 +6,4 @@
       members:
         - parse
         - combine_ingredients
-        - CooklangError
+        - ParseError

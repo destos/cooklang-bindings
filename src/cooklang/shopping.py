@@ -18,6 +18,8 @@ from dataclasses import dataclass, field
 from typing import Any, Iterable, Sequence
 
 from ._ffi import ffi
+from ._validate import require_str
+from .errors import CooklangError
 
 __all__ = [
     "ShoppingListError",
@@ -34,8 +36,11 @@ __all__ = [
 ]
 
 
-class ShoppingListError(ValueError):
-    """Raised when a shopping list cannot be parsed or serialized."""
+class ShoppingListError(CooklangError):
+    """Raised when a shopping list cannot be parsed or serialized.
+
+    It is a :class:`~cooklang.errors.CooklangError`, and so a ``ValueError``.
+    """
 
 
 @dataclass(frozen=True, slots=True)
@@ -181,8 +186,7 @@ def parse_shopping_list(text: str) -> ShoppingList:
         ShoppingListError: If the list cannot be parsed.
         TypeError: If ``text`` is not a ``str``.
     """
-    if not isinstance(text, str):
-        raise TypeError(f"expected str, got {type(text).__name__}")
+    require_str("text", text)
     try:
         raw = ffi.parse_shopping_list(text)
     except ffi.ShoppingListError as exc:
@@ -196,8 +200,7 @@ def parse_checked_log(text: str) -> tuple[CheckEntry, ...]:
     Raises:
         TypeError: If ``text`` is not a ``str``.
     """
-    if not isinstance(text, str):
-        raise TypeError(f"expected str, got {type(text).__name__}")
+    require_str("text", text)
     return tuple(_from_ffi_entry(e) for e in ffi.parse_shopping_checked(text))
 
 

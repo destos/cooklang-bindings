@@ -34,7 +34,8 @@ from .models import (
     Timer,
     TimerRef,
 )
-from .parser import CooklangError, combine_ingredients, parse
+from .errors import CooklangError
+from .parser import ParseError, combine_ingredients, parse
 from .shopping import (
     CheckEntry,
     Checked,
@@ -53,10 +54,12 @@ from .values import format_value, parse_value
 __all__ = [
     # Helpers this project adds, which upstream does not provide.
     "contrib",
+    # Errors
+    "CooklangError",
     # Recipes
     "parse",
     "combine_ingredients",
-    "CooklangError",
+    "ParseError",
     "Recipe",
     "Section",
     "Step",
