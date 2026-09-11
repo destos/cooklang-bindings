@@ -102,7 +102,7 @@ __all__ = [
     "UPSTREAM_VERSION",
 ]
 
-__version__ = "0.5.0"
+__version__ = "0.6.0"
 
 UPSTREAM_VERSION = "0.18.7"
 """The pinned cooklang-rs release these bindings are generated from."""
