@@ -149,7 +149,7 @@ read [Syntax extensions](extensions.md) first.
 
     ```pycon
     >>> recipe = cooklang.parse("One.\n\n> A note.\n\nTwo.\n")
-    >>> [type(block).__name__ for block in recipe.sections[0]]
+    >>> [type(block).__name__ for block in recipe.sections[0].blocks]
     ['Step', 'Note', 'Step']
 
     ```

@@ -8,6 +8,7 @@
         - ShoppingList
         - RecipeItem
         - IngredientItem
+        - ShoppingItem
         - ShoppingListError
 
 ## The checked log
@@ -22,5 +23,3 @@
         - checked_names
         - compact_checked_log
         - CheckEntry
-        - Checked
-        - Unchecked

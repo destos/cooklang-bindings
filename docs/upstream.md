@@ -185,11 +185,11 @@ removes one. The mapping:
 | `use_common_names` | `combine_ingredients(aisle=...)` |
 | `parse_aisle_config` | [`cooklang.parse_aisle_config()`][cooklang.aisle.parse_aisle_config] |
 | `parse_shopping_list` | [`cooklang.parse_shopping_list()`][cooklang.shopping.parse_shopping_list] |
-| `write_shopping_list` | [`ShoppingList.to_text()`][cooklang.shopping.ShoppingList.to_text] |
+| `write_shopping_list` | [`ShoppingList.to_text()`][cooklang.shopping.ShoppingList.to_text], and [`RecipeItem.to_text()`][cooklang.shopping.RecipeItem.to_text] / [`IngredientItem.to_text()`][cooklang.shopping.IngredientItem.to_text] for one item |
 | `parse_shopping_checked` | [`cooklang.parse_checked_log()`][cooklang.shopping.parse_checked_log] |
 | `shopping_checked_set` | [`cooklang.checked_names()`][cooklang.shopping.checked_names] |
 | `compact_shopping_checked` | [`cooklang.compact_checked_log()`][cooklang.shopping.compact_checked_log] |
-| `write_shopping_check_entry` | [`Checked.to_text()`][cooklang.shopping.Checked.to_text] / [`Unchecked.to_text()`][cooklang.shopping.Unchecked.to_text] |
+| `write_shopping_check_entry` | [`CheckEntry.to_text()`][cooklang.shopping.CheckEntry.to_text] |
 
 The four `deref_*` functions have no Pythonic wrapper on purpose: the model
 resolves component references eagerly at parse time, so it never hands out an

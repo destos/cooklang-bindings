@@ -11,8 +11,8 @@ Upstream parses two related file formats, and both are wrapped here.
 ## Parsing a list
 
 A line beginning `./` is a recipe reference; anything else is a free-hand
-ingredient. A `{...}` suffix is a multiplier on a recipe and a quantity on an
-ingredient. Children are indented by **two spaces per level**.
+ingredient. A `{...}` suffix scales a recipe and gives an ingredient its
+amount. Children are indented by **two spaces per level**.
 
 ```pycon
 >>> import cooklang
@@ -23,40 +23,53 @@ ingredient. Children are indented by **two spaces per level**.
 ... eggs{6}
 ... """
 >>> shopping = cooklang.parse_shopping_list(LIST)
->>> len(shopping)
+>>> len(shopping.items)
 3
 
 ```
 
-The top-level items keep document order, and the two views split them by kind:
+`items` holds the top-level lines in document order, and the two views split
+them by kind. `str()` of an item is display text, for showing to a person; the
+file syntax comes from `to_text()`, covered [below](#writing-a-list-back-out).
 
 ```pycon
->>> [str(item) for item in shopping]
-['./Breakfast/Pancakes{2}', 'bread', 'eggs{6}']
+>>> [str(item) for item in shopping.items]
+['Breakfast/Pancakes ×2', 'bread', 'eggs (6)']
 >>> shopping.recipes[0].path
 'Breakfast/Pancakes'
->>> shopping.recipes[0].multiplier
+>>> shopping.recipes[0].scale
 2.0
 >>> shopping.ingredients
-(IngredientItem(name='bread', quantity=None), IngredientItem(name='eggs', quantity='6'))
+(IngredientItem(name='bread', quantity_text=None), IngredientItem(name='eggs', quantity_text='6'))
 
 ```
 
 `path` is stored without the leading `./` that marked the line as a reference.
+`scale` multiplies that recipe the way the `scale` argument to
+[`parse`][cooklang.parse] does; upstream calls it the multiplier, and this
+package uses one word for one idea.
+
+A line of either kind is a [`ShoppingItem`][cooklang.shopping.ShoppingItem],
+the alias for `RecipeItem | IngredientItem`, which is the type to annotate a
+function that takes any line.
 
 Nested lines become that recipe's `children`, recursively:
 
 ```pycon
 >>> shopping.recipes[0].children
-(RecipeItem(path='Toppings/Syrup', multiplier=None, children=()), IngredientItem(name='milk', quantity='500%ml'))
+(RecipeItem(path='Toppings/Syrup', scale=None, children=()), IngredientItem(name='milk', quantity_text='500%ml'))
 
 ```
 
-An ingredient's `quantity` is kept as the raw string the file gave, unparsed.
-[`parse_value`](values.md) will read it if you need a number:
+An ingredient's `quantity_text` is kept as the raw string the file gave,
+unparsed. It is not called `quantity` because on a recipe's
+[`Ingredient`][cooklang.models.Ingredient] that name is a parsed
+[`Quantity`][cooklang.models.Quantity], and the same attribute name holding a
+string here would invite `.value` on text. [`parse_value`](values.md) will read
+it if you need a number:
 
 ```pycon
->>> cooklang.parse_value(shopping.ingredients[1].quantity)
+>>> cooklang.parse_value(shopping.ingredients[1].quantity_text)
 6
 
 ```
@@ -78,11 +91,29 @@ True
 
 ```
 
+Each item serializes on its own too, newline included, and a recipe brings its
+children with it. Compare the display form with the file form:
+
+```pycon
+>>> salt = cooklang.IngredientItem("salt", quantity_text="1%tsp")
+>>> str(salt)
+'salt (1 tsp)'
+>>> salt.to_text()
+'salt{1%tsp}\n'
+>>> str(shopping.recipes[0])
+'Breakfast/Pancakes ×2'
+>>> print(shopping.recipes[0].to_text(), end="")
+./Breakfast/Pancakes{2}
+  ./Toppings/Syrup
+  milk{500%ml}
+
+```
+
 Because the model is a frozen dataclass, "editing" means building a new one:
 
 ```pycon
 >>> extended = cooklang.ShoppingList(
-...     items=shopping.items + (cooklang.IngredientItem(name="butter", quantity="250%g"),)
+...     items=shopping.items + (cooklang.IngredientItem(name="butter", quantity_text="250%g"),)
 ... )
 >>> print(extended.to_text(), end="")
 ./Breakfast/Pancakes{2}
@@ -130,18 +161,16 @@ ingredient may appear more than once and later entries win.
 >>> LOG = "+ milk\n+ bread\n- milk\n+ Eggs\n"
 >>> entries = cooklang.parse_checked_log(LOG)
 >>> entries
-(Checked(name='milk', checked=True), Checked(name='bread', checked=True), Unchecked(name='milk', checked=False), Checked(name='Eggs', checked=True))
+(CheckEntry(name='milk', checked=True), CheckEntry(name='bread', checked=True), CheckEntry(name='milk', checked=False), CheckEntry(name='Eggs', checked=True))
 
 ```
 
-[`Checked`][cooklang.shopping.Checked] and
-[`Unchecked`][cooklang.shopping.Unchecked] differ only in their fixed `checked`
-flag, which is not settable — the type *is* the state.
+Every line is a [`CheckEntry`][cooklang.shopping.CheckEntry]: `checked=True`
+for `+`, `False` for `-`. The flag is keyword-only, so building one reads as
+what it means rather than as a bare boolean:
 
 ```pycon
->>> cooklang.Checked("milk").checked
-True
->>> cooklang.Unchecked("milk").checked
+>>> cooklang.CheckEntry("milk", checked=False).checked
 False
 
 ```
@@ -168,7 +197,7 @@ current ingredient set.
 
 ```pycon
 >>> cooklang.compact_checked_log(entries, ["milk", "bread", "eggs"])
-(Checked(name='bread', checked=True), Checked(name='eggs', checked=True))
+(CheckEntry(name='bread', checked=True), CheckEntry(name='eggs', checked=True))
 
 ```
 
@@ -180,7 +209,7 @@ current ingredient set.
 
     ```pycon
     >>> cooklang.compact_checked_log(entries, ["Breakfast/Pancakes", "bread", "eggs"])
-    (Checked(name='bread', checked=True), Checked(name='eggs', checked=True))
+    (CheckEntry(name='bread', checked=True), CheckEntry(name='eggs', checked=True))
     >>> cooklang.compact_checked_log(entries, [])
     ()
 
@@ -192,9 +221,9 @@ Each entry serializes itself, newline included, so a log is the concatenation
 of its entries:
 
 ```pycon
->>> cooklang.Checked("milk").to_text()
+>>> cooklang.CheckEntry("milk", checked=True).to_text()
 '+ milk\n'
->>> cooklang.Unchecked("milk").to_text()
+>>> cooklang.CheckEntry("milk", checked=False).to_text()
 '- milk\n'
 >>> print("".join(e.to_text() for e in cooklang.compact_checked_log(entries, ["milk", "bread", "eggs"])), end="")
 + bread
