@@ -25,8 +25,8 @@ Import it explicitly::
 from __future__ import annotations
 
 from collections import Counter
+from collections.abc import Sequence
 from datetime import timedelta
-from typing import Sequence
 
 from .models import Ingredient, Step, Timer
 

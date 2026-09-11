@@ -218,8 +218,10 @@ that a further "and more to taste" mention existed is not represented:
 
 ### Totalling a subset
 
-`indices` selects which occurrences to include — the steps a user has ticked,
-say. Positions refer to the sequence you passed in.
+`indices` selects which ingredient occurrences to include, for example the
+ingredients of the steps a user has ticked. Positions index the `ingredients`
+sequence you passed in, not the recipe's steps. `indices` is read once, so any
+iterable of ints works: a list, a set, or a generator.
 
 ```pycon
 >>> recipe = cooklang.parse("Add @salt{2%tsp}, @pepper{1%tsp} then @salt{3%tsp}.")

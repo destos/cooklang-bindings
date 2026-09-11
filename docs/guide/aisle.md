@@ -74,34 +74,28 @@ first:
 ## Categories
 
 [`category_for`][cooklang.aisle.AisleConfig.category_for] answers which aisle
-an ingredient belongs to, or `None` if the config does not list it.
+an ingredient belongs to, or `None` if the config does not list it. It matches
+the way `common_name_for` does, case-insensitively and through aliases:
 
 ```pycon
 >>> config.category_for("onion")
 'produce'
+>>> config.category_for("Onions")
+'produce'
+>>> config.category_for("Unsalted Butter")
+'dairy'
 >>> config.category_for("kale") is None
 True
 
 ```
 
-!!! note "`category_for` is case sensitive; `common_name_for` is not"
-
-    `category_for` matches the config verbatim, so a differently-cased or
-    aliased name misses:
-
-    ```pycon
-    >>> config.category_for("Onions") is None
-    True
-
-    ```
-
-    Resolve through `common_name_for` first if your input is user-entered:
-
-    ```pycon
-    >>> config.category_for(config.common_name_for("Onions"))
-    'produce'
-
-    ```
+The two methods agree because they answer the same question: is this
+ingredient in the config? Upstream's category lookup is exact-match only, so on
+its own it would call `"Onions"` unlisted even though `common_name_for`
+resolves it to `"onion"`. A shopping list would then file the same ingredient
+under "other" or under produce depending on how a recipe capitalised it.
+`category_for` tries upstream's exact match first, then looks up the category
+of the common name, so user-entered text needs no normalising first.
 
 ## Laying out a shopping list
 
@@ -112,6 +106,15 @@ grouped under `None` so it can be rendered as "other" rather than dropped.
 ```pycon
 >>> config.group_by_category(["butter", "onions", "kale"])
 {'produce': ('onions',), 'dairy': ('butter',), None: ('kale',)}
+
+```
+
+Because it goes through `category_for`, a capitalised or aliased name lands in
+its aisle too, rather than under `None`:
+
+```pycon
+>>> config.group_by_category(["Onions", "Unsalted Butter"])
+{'produce': ('Onions',), 'dairy': ('Unsalted Butter',)}
 
 ```
 
@@ -175,12 +178,39 @@ and `apply_common_names` when the totals arrived from somewhere else.
 
 ## Reusing a config
 
-An `AisleConfig` is immutable and holds its FFI object, so parse it once at
-startup and reuse it across every recipe.
+An `AisleConfig` is immutable, so parse it once at startup and reuse it across
+every recipe.
 
 ```pycon
 >>> config.common_name_for("Onions"), config.common_name_for("onions")
 ('onion', 'onion')
+
+```
+
+`parse_aisle_config(text)`, `AisleConfig(text)` and
+`AisleConfig.from_text(text)` do the same thing; use whichever reads best in
+your code.
+
+```pycon
+>>> cooklang.AisleConfig(AISLE) == cooklang.AisleConfig.from_text(AISLE) == config
+True
+
+```
+
+It holds a native FFI object, so unlike the recipe model it is not a
+dataclass, but it still behaves as a value. Two configs with the same
+categories compare equal and hash alike, so a config can key a cache. Pickling
+a config stores its source text and re-parses it when unpickled, instead of
+storing a native pointer that would dangle in another process. That makes it
+safe to send a config to a worker pool:
+
+```pycon
+>>> import pickle
+>>> restored = pickle.loads(pickle.dumps(config))
+>>> restored == config, hash(restored) == hash(config)
+(True, True)
+>>> restored.category_for("Onions")
+'produce'
 
 ```
 

@@ -39,10 +39,30 @@ pinned per release; see [NOTICE](NOTICE) for the relationship to cooklang-rs.
   and `ShoppingList` no longer iterates or has a length; use `section.blocks`
   and `shopping.items`. A type with `__len__` but no `__getitem__` misleads
   type checkers, and `reversed()` failed on it.
+- **`AisleConfig` is built from text.** `AisleConfig(text)` and the new
+  `AisleConfig.from_text(text)` both parse; the constructor used to take a
+  private FFI object. `parse_aisle_config` is unchanged.
+- **`category_for` matches the way `common_name_for` does.** Upstream's lookup
+  is exact-match, so `category_for("Onions")` was `None` while
+  `common_name_for("Onions")` was `"onion"`, and `group_by_category` filed the
+  name under "other". It now falls back to the common name.
+- **`__version__` is no longer in `__all__`.** It is still importable by name.
+
+### Fixed
+
+- **`AisleConfig` pickles safely.** It used to pickle its native pointer,
+  which dangles in another process; it now re-parses its source text. Two
+  configs with the same categories now compare equal and hash alike.
 
 ### Added
 
-- `ShoppingItem`, the exported alias for `RecipeItem | IngredientItem`.
+- `ShoppingItem` and `Block`, exported aliases for `RecipeItem |
+  IngredientItem` and `Step | Note`.
+- `RecipeTime.total_duration`, `prep_duration` and `cook_duration`, the
+  minute fields as `timedelta`, so recipe time adds to
+  `contrib.timer_duration` without unit conversion.
+- `combine_ingredients(indices=...)` accepts any iterable of ints, and
+  `apply_common_names` has a precise signature instead of `Any`.
 
 ## 0.5.0 — 2026-09-11
 
