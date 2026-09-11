@@ -6,8 +6,8 @@ are safe to hold onto, compare, pickle, and hand to a template.
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Iterator, Mapping
 from dataclasses import dataclass, field
-from typing import Any, Iterator, Mapping, Sequence
 
 __all__ = [
     "Range",
@@ -256,19 +256,61 @@ class Section:
         return self.name or ""
 
 
+class _Metadata(Mapping[str, "str | int | tuple[str, ...]"]):
+    """A read-only, hashable, picklable mapping for :attr:`Recipe.metadata`.
+
+    ``types.MappingProxyType`` would be read-only but can be neither hashed nor
+    pickled, and either failure would break the promise the model types make.
+    Lists are stored as tuples so every value is hashable.
+    """
+
+    __slots__ = ("_data",)
+
+    def __init__(
+        self, data: Mapping[str, object] | Iterable[tuple[str, object]] = ()
+    ) -> None:
+        items = data.items() if isinstance(data, Mapping) else data
+        self._data: dict[str, str | int | tuple[str, ...]] = {
+            key: tuple(value) if isinstance(value, list) else value  # type: ignore[misc]
+            for key, value in items
+        }
+
+    def __getitem__(self, key: str) -> str | int | tuple[str, ...]:
+        return self._data[key]
+
+    def __iter__(self) -> Iterator[str]:
+        return iter(self._data)
+
+    def __len__(self) -> int:
+        return len(self._data)
+
+    def __hash__(self) -> int:
+        return hash(frozenset(self._data.items()))
+
+    def __repr__(self) -> str:
+        return repr(self._data)
+
+    def __reduce__(self) -> tuple[type[_Metadata], tuple[dict[str, object]]]:
+        return (type(self), (self._data,))
+
+
 @dataclass(frozen=True, slots=True)
 class Recipe:
     """A parsed recipe.
 
-    Build one with :func:`cooklang.parse`.
+    Build one with :func:`cooklang.parse`. Like every model type it compares,
+    hashes and pickles by value.
     """
 
-    metadata: Mapping[str, Any] = field(default_factory=dict)
+    metadata: Mapping[str, str | int | tuple[str, ...]] = field(default_factory=_Metadata)
     """All recipe metadata, from YAML front matter or ``>> key: value`` lines.
 
     Standard keys use Python-friendly names (``prep_time``, not ``prep time``);
-    custom keys appear exactly as written. ``tags`` is a list and ``servings``
+    custom keys appear exactly as written. ``tags`` is a tuple and ``servings``
     is an ``int`` where the recipe gave a number; every other value is a string.
+
+    The mapping is read-only, as the rest of the recipe is. ``dict(recipe.metadata)``
+    gives a mutable copy.
     """
     sections: tuple[Section, ...] = ()
     ingredients: tuple[Ingredient, ...] = ()
@@ -281,6 +323,12 @@ class Recipe:
     """Structured form of the ``source`` metadata; the raw string stays in ``metadata``."""
     time: RecipeTime | None = None
     """Structured form of the recipe's timing, in minutes."""
+
+    def __post_init__(self) -> None:
+        # A caller building a Recipe by hand may pass a plain dict; freeze it
+        # so the hash and immutability promises hold whoever constructed it.
+        if not isinstance(self.metadata, _Metadata):
+            object.__setattr__(self, "metadata", _Metadata(self.metadata))
 
     @property
     def title(self) -> str | None:
@@ -299,8 +347,8 @@ class Recipe:
 
     @property
     def tags(self) -> tuple[str, ...]:
-        value = self.metadata.get("tags")
-        return tuple(value) if isinstance(value, Sequence) and not isinstance(value, str) else ()
+        value = self.metadata.get("tags", ())
+        return value if isinstance(value, tuple) else ()
 
     @property
     def steps(self) -> tuple[Step, ...]:

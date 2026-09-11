@@ -86,7 +86,7 @@ class TestRecoveredDiagnostics:
 
     def test_unrecognised_text_degrades_to_raw(self):
         """If upstream changes the format, keep the text rather than lying."""
-        error = cooklang.CooklangError("something entirely unexpected")
+        error = cooklang.ParseError._from_panic("something entirely unexpected")
 
         assert error.message is None
         assert error.span is None
