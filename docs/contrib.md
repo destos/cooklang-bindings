@@ -59,6 +59,7 @@ how you read a recipe at all, not optional policy:
 | `Recipe.method` | Just the step text, for when you want the method as prose. |
 | `Section.steps`, `Section.notes` | Filtered views over a section's blocks. |
 | `Recipe.author`, `.source`, `.time` | Reshaped from upstream's separate getters into single values; `RecipeTime` also fills in `total` for a recipe that gave a prep/cook split. |
+| `RecipeTime.total_duration`, `.prep_duration`, `.cook_duration` | Upstream reports whole minutes. These give the same values as `timedelta`, so they add to `contrib.timer_duration` without unit conversion. |
 | `Recipe.metadata` | Assembled from upstream's standard-key getters plus its custom-key list, under Python-friendly names. |
 | `Timer.__str__` | Renders a timer as its duration rather than its name, because that is what reads correctly inline. |
 | `AisleConfig.group_by_category` | Buckets names by category in config order, collecting unlisted ones under `None`. |

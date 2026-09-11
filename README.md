@@ -122,7 +122,8 @@ they occur. Each reference carries an `index` into the recipe's component list
 and the resolved object, which is how two mentions of one ingredient at
 different amounts stay distinguishable. `Section` has `name`, `blocks`,
 and `steps` / `notes` views. `Quantity` has `value` (an `int` for whole numbers,
-`float`, `str`, or `None`), `unit`, and `text` — upstream's own rendering, which
+a `float` for fractional ones, a `Range`, a `str` for free-text amounts such as
+`@salt{a pinch}`, or `None` when the recipe gave no amount), `unit`, and `text` — upstream's own rendering, which
 keeps fractions as `1/2` rather than `0.5`. Use `text` for display and
 `value`/`unit` for arithmetic.
 
@@ -158,6 +159,7 @@ butter|unsalted butter
 
 config.common_name_for("Brown Onion")   # "onion"  (case-insensitive, matches aliases)
 config.category_for("butter")           # "dairy"
+config.category_for("Onions")           # "produce"  (matches like common_name_for)
 config.categories                       # in config-file order
 
 recipe = cooklang.parse("Add @onions{1} and @brown onion{2}.")
@@ -171,6 +173,12 @@ comes back unchanged, so it is safe to apply across a whole list.
 collecting anything unlisted under `None` rather than dropping it.
 `apply_common_names(totals)` does the same normalisation on totals you already
 computed, merging quantities that collapse onto one name.
+
+`AisleConfig(text)` and `AisleConfig.from_text(text)` are the same as
+`parse_aisle_config(text)`. A config holds a native object but behaves as a
+value: configs with the same categories compare equal and hash alike, and
+pickling one re-parses its source text rather than carrying a pointer that
+would dangle in another process.
 
 ### Shopping lists and the checked log
 

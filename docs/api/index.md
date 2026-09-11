@@ -10,7 +10,7 @@ API, not to describe an import path you have to use.
 | Group | Names |
 | --- | --- |
 | [Parsing](parser.md) | `parse`, `combine_ingredients`, `ParseError` |
-| [Recipe model](models.md) | `Recipe`, `Section`, `Step`, `Note`, `Ingredient`, `Cookware`, `Timer`, `Quantity`, `Range`, `NameAndUrl`, `RecipeTime` |
+| [Recipe model](models.md) | `Recipe`, `Section`, `Step`, `Note`, `Block`, `TextItem`, `IngredientRef`, `CookwareRef`, `TimerRef`, `Item`, `Ingredient`, `Cookware`, `Timer`, `Quantity`, `Range`, `NameAndUrl`, `RecipeTime` |
 | [Aisle configuration](aisle.md) | `parse_aisle_config`, `AisleConfig`, `AisleCategory`, `AisleIngredient` |
 | [Shopping lists](shopping.md) | `parse_shopping_list`, `ShoppingList`, `RecipeItem`, `IngredientItem`, `ShoppingItem`, `ShoppingListError` |
 | [Checked log](shopping.md#the-checked-log) | `parse_checked_log`, `checked_names`, `compact_checked_log`, `CheckEntry` |
@@ -33,7 +33,8 @@ rather than bad input.
 | `AisleConfig.category_for(name)` | `str | None` |
 | `AisleConfig.common_name_for(name)` | `str` |
 | `AisleConfig.group_by_category(names)` | `dict[str | None, tuple[str, ...]]` |
-| `AisleConfig.apply_common_names(totals)` | `dict[str, tuple[`[`Quantity`][cooklang.models.Quantity]`, ...]]` |
+| `AisleConfig(text)`, `AisleConfig.from_text(text)` | [`AisleConfig`][cooklang.aisle.AisleConfig] |
+| `AisleConfig.apply_common_names(totals: Mapping[str, Iterable[Quantity]])` | `dict[str, tuple[`[`Quantity`][cooklang.models.Quantity]`, ...]]` |
 | `parse_shopping_list(text)` | [`ShoppingList`][cooklang.shopping.ShoppingList] |
 | `ShoppingList.to_text()` | `str` |
 | `parse_checked_log(text)` | `tuple[`[`CheckEntry`][cooklang.shopping.CheckEntry]`, ...]` |

@@ -141,6 +141,22 @@ RecipeTime(total=60, prep=20, cook=40)
 
 ```
 
+The fields are whole minutes because that is what upstream reports. The
+`total_duration`, `prep_duration` and `cook_duration` properties give the same
+values as a `timedelta`, which is the type
+[`contrib.timer_duration`][cooklang.contrib.timer_duration] returns. That lets
+you add recipe time and timer time without converting units:
+
+```pycon
+>>> recipe.time.total_duration
+datetime.timedelta(seconds=3600)
+>>> from cooklang import contrib
+>>> rest = cooklang.parse("Rest for ~{15%min}.").timers[0]
+>>> recipe.time.cook_duration + contrib.timer_duration(rest)
+datetime.timedelta(seconds=3300)
+
+```
+
 ### Sections, steps and notes
 
 `== Heading ==` produces a [`Section`][cooklang.models.Section].
